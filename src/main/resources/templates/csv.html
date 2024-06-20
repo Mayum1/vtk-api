@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Tables</title>
+</head>
+<body>
+    <h1>CSV Tables</h1>
+	<label for="csvFile">CSV File Input:</label>
+	<input type="file" id="csvFile" name="csvFile">
+
+    <h2>Table Selection:</h2>
+	<select id="csvSelect" name="csvSelect">
+		<option value="">Choose a table</option>
+	</select>
+	<button type="submit" onclick="deleteCsv()">Delete Table</button>
+
+    <h2>CSV Output:</h2>
+    <pre id="output"></pre>
+
+    <script>
+        const apiBaseUrl = 'http://localhost:8080/api'; // Укажите здесь IP-адрес и порт сервера API
+
+        fetch(`${apiBaseUrl}/csv/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(csv => {
+                const option = document.createElement('option');
+                option.textContent = csv.name;
+                document.getElementById('csvSelect').appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+		
+		document.getElementById('csvFile').addEventListener('change', function(event) {
+			const fileInput = event.target;
+			const csvFile = fileInput.files[0];
+			
+			if (!csvFile) {
+				return;
+			}
+			
+			const formData = new FormData();
+			formData.append('csvFile', csvFile);
+
+			fetch(`${apiBaseUrl}/csv/save`, {
+				method: 'POST',
+				body: formData
+			})
+			.then(response => response.text())
+			.then(data => {
+				document.getElementById('output').innerText += data + '\n';
+				const prefix = 'File saved: ';
+				if (data.startsWith(prefix)) {
+					const csvName = data.substring(prefix.length);
+					const option = document.createElement('option');
+					option.textContent = csvName;
+					document.getElementById('csvSelect').appendChild(option);
+					document.getElementById('csvSelect').value=csvName;
+					document.getElementById('csvSelect').dispatchEvent(new Event('change'));
+				}
+			})
+			.catch((error) => {
+				document.getElementById('output').innerText += error + '\n';
+				console.error('Error:', error);
+			});
+		});
+		
+		document.getElementById('csvSelect').addEventListener('change', function(event) {
+			const selectElement = event.target;
+			const csvName = selectElement.value;
+
+			if (csvName === '') {
+				return;
+			}
+			
+			fetch(`${apiBaseUrl}/csv/path`, {
+                method: 'POST',
+                body: new URLSearchParams({
+					csvName: csvName
+                })
+            })
+			.then(response => response.text())
+			.then(data => {
+				document.getElementById('output').innerText += `File path: ${data}\n`;
+			})
+			.catch((error) => {
+				document.getElementById('output').innerText += `Error: ${error}\n`;
+				console.error('Error:', error);
+			});
+		});
+
+		function deleteCsv() {
+			const csvName = document.getElementById('csvSelect').value;
+			if (csvName === '')
+				return;
+			
+			fetch(`${apiBaseUrl}/csv/delete`, {
+				method: 'DELETE',
+				headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+				body: new URLSearchParams({
+					csvName: csvName
+				})
+			})
+			.then(response => response.text())
+			.then(data => {
+				document.getElementById('output').innerText += data + '\n';
+                var selectBox = document.getElementById('csvSelect')
+				selectBox.remove(selectBox.selectedIndex);
+			})
+			.catch(error => {
+                console.error('Error:', error);
+            });
+		}
+    </script>
+</body>
+</html>
