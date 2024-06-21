@@ -16,5 +16,11 @@ services:
       - DB_PASSWORD=admin
     volumes:
       - static-files:/app/static
+    networks:
+      - network
 volumes:
-    static-files:
+  static-files:
+  
+networks:
+  network:
+    driver: bridge

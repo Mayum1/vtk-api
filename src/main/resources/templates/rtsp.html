@@ -4,33 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RTSP Stream</title>
-	<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link href="https://vjs.zencdn.net/7.14.3/video-js.css" rel="stylesheet">
+    <script src="https://vjs.zencdn.net/7.14.3/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/videojs-http-streaming@1.13.3/dist/videojs-http-streaming.min.js"></script>
 </head>
 <body>
     <h1>RTSP Stream</h1>
     <form id="streamForm" onsubmit="return false;">
-		<label for="rtspName">Name of RTSP URL:</label>
+        <label for="rtspName">Name of RTSP URL:</label>
         <input type="text" id="rtspName" name="rtspName" required>
         <label for="rtspUrl">RTSP URL:</label>
         <input type="text" id="rtspUrl" name="rtspUrl" required>
-		<button type="submit" onclick="saveLink()">Save Link</button>
+        <button type="submit" onclick="saveLink()">Save Link</button>
     </form>
 
     <h2>Link Selection:</h2>
-	<select id="rtspSelect" name="rtspSelect">
-		<option value="">Choose a link</option>
-	</select>
-	<button type="submit" onclick="deleteLink()">Delete Link</button>
-	<h2></h2>
-	<button type="submit" onclick="startStream()">Start Stream</button>
+    <select id="rtspSelect" name="rtspSelect">
+        <option value="">Choose a link</option>
+    </select>
+    <button type="submit" onclick="deleteLink()">Delete Link</button>
+    <h2></h2>
+    <button type="submit" onclick="startStream()">Start Stream</button>
 
     <h2>Stream Output:</h2>
     <pre id="output"></pre>
-    <video id="streamVideo" autoplay></video>
-	<button type="submit" id="muteButton" onclick="muteButton()">Mute</button>
+    <video id="streamVideo" class="video-js vjs-default-skin" controls autoplay></video>
+    <button type="submit" id="muteButton" onclick="muteButton()">Mute</button>
 
     <script>
-        const apiBaseUrl = 'http://localhost:8080/api'; // Укажите здесь IP-адрес и порт сервера API
+        const apiBaseUrl = 'http://localhost:8080/api';
         let ws;
 
         fetch(`${apiBaseUrl}/rtsp/`, {
@@ -50,63 +52,63 @@
         .catch(error => {
             console.error('Error:', error);
         });
-		
-		function muteButton() {
-			var streamVideo = document.getElementById('streamVideo');
-			streamVideo.muted = !streamVideo.muted;
-			document.getElementById('muteButton').textContent = streamVideo.muted ? 'Unmute' : 'Mute';
-		}
-		
-		function saveLink() {
+        
+        function muteButton() {
+            var streamVideo = document.getElementById('streamVideo');
+            streamVideo.muted = !streamVideo.muted;
+            document.getElementById('muteButton').textContent = streamVideo.muted ? 'Unmute' : 'Mute';
+        }
+        
+        function saveLink() {
             const rtspName = document.getElementById('rtspName').value;
-			const rtspUrl = document.getElementById('rtspUrl').value;
-			
-			fetch(`${apiBaseUrl}/rtsp/save`, {
-				method: 'POST',
-				headers: {
+            const rtspUrl = document.getElementById('rtspUrl').value;
+            
+            fetch(`${apiBaseUrl}/rtsp/save`, {
+                method: 'POST',
+                headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
-				body: new URLSearchParams({
-					rtspName: rtspName,
-					rtspUrl: rtspUrl
-				})
-			})
-			.then(response => response.text())
-			.then(data => {
-				document.getElementById('output').innerText += data + '\n';
-				if (data == 'Rtsp link saved') {
-					const option = document.createElement('option');
-					option.textContent = rtspName;
-					document.getElementById('rtspSelect').appendChild(option);
-				}
-			})
-			.catch(error => {
+                body: new URLSearchParams({
+                    rtspName: rtspName,
+                    rtspUrl: rtspUrl
+                })
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('output').innerText += data + '\n';
+                if (data == 'Rtsp link saved') {
+                    const option = document.createElement('option');
+                    option.textContent = rtspName;
+                    document.getElementById('rtspSelect').appendChild(option);
+                }
+            })
+            .catch(error => {
                 console.error('Error:', error);
             });
-		}
-		
-		function deleteLink() {
-			const rtspName = document.getElementById('rtspSelect').value;
-			
-			fetch(`${apiBaseUrl}/rtsp/delete`, {
-				method: 'DELETE',
-				headers: {
+        }
+        
+        function deleteLink() {
+            const rtspName = document.getElementById('rtspSelect').value;
+            
+            fetch(`${apiBaseUrl}/rtsp/delete`, {
+                method: 'DELETE',
+                headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
-				body: new URLSearchParams({
-					rtspName: rtspName
-				})
-			})
-			.then(response => response.text())
-			.then(data => {
-				document.getElementById('output').innerText += data + '\n';
-                var selectBox = document.getElementById('rtspSelect')
-				selectBox.remove(selectBox.selectedIndex);
-			})
-			.catch(error => {
+                body: new URLSearchParams({
+                    rtspName: rtspName
+                })
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('output').innerText += data + '\n';
+                var selectBox = document.getElementById('rtspSelect');
+                selectBox.remove(selectBox.selectedIndex);
+            })
+            .catch(error => {
                 console.error('Error:', error);
             });
-		}
+        }
 
         function startStream() {
             const rtspName = document.getElementById('rtspSelect').value;
@@ -115,16 +117,15 @@
                 document.getElementById('output').innerText += 'Please select a link\n';
                 return;
             }
-			
-			if (ws && ws.rtspName === rtspName) {
-				return;
-			} else if (ws) {
-				ws.close();
-			}
-			
-            // Открываем WebSocket соединение
+            
+            if (ws && ws.rtspName === rtspName) {
+                return;
+            } else if (ws) {
+                ws.close();
+            }
+            
             ws = new WebSocket(`ws://localhost:8080/ws/stream?rtspName=${rtspName}`);
-			ws.rtspName = rtspName;
+            ws.rtspName = rtspName;
 
             ws.onopen = () => {
                 console.log('WebSocket connection opened');
@@ -143,50 +144,47 @@
                 console.log('WebSocket error', error);
             };
 
-            // Отправляем данные на сервер для начала стрима
             fetch(`${apiBaseUrl}/rtsp/stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
                 body: new URLSearchParams({
-					rtspName: rtspName
+                    rtspName: rtspName
                 })
             })
             .then(response => response.text())
             .then(data => {
                 console.log('Stream started', data);
                 document.getElementById('output').innerText += `Stream started: ${data}\n`;
-				// Передача стрима на видео-объект страницы
-				if(Hls.isSupported()) {
-					var streamVideo = document.getElementById('streamVideo');
-					var hls = new Hls({
-						liveSyncDurationCount: 0,
-						liveMaxLatencyDurationCount: 1,
-						initialLiveManifestSize: 1,
-						startPosition: -1
-					});
-					hls.loadSource(data);
-					hls.attachMedia(streamVideo);
-					hls.on(Hls.Events.MANIFEST_PARSED, function() {
-					  streamVideo.play();
-					});
 
-                    hls.on(Hls.Events.LEVEL_UPDATED, function(event, data) {
-                        // Пытаемся держаться в режиме live
-                        const bufferInfo = hls.bufferInfo(streamVideo.currentTime, 0);
-                        if (bufferInfo.len < 3) { // если буфер меньше 3 секунд
-                            streamVideo.currentTime = bufferInfo.end; // перемещаем воспроизведение на конец буфера
+                var streamVideo = document.getElementById('streamVideo');
+                var player = videojs(streamVideo, {
+                    liveui: true,
+                    techOrder: ['html5'],
+                    html5: {
+                        vhs: {
+                            enableLowInitialPlaylist: true,
+                            enableWorker: true,
+                            useDevicePixelRatio: true,
+                            overrideNative: !videojs.browser.IS_SAFARI,
+                            handleManifestRedirects: true,
                         }
-                    });
-				}
+                    }
+                });
+
+                player.src({
+                    src: data,
+                    type: 'application/x-mpegURL'
+                });
+
+                player.play();
             })
             .catch(error => {
                 console.error('Error:', error);
             });
         }
 
-        // Обработчик закрытия окна/вкладки
         window.addEventListener('beforeunload', () => {
             if (ws) {
                 ws.close();
