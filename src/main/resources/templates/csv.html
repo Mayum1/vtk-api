@@ -3,21 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" th:href="@{/styles/bootstrap.min.css}" />
+	<link rel="stylesheet" th:href="@{/styles/settings.css}" />
+	 <link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
     <title>CSV Tables</title>
 </head>
 <body>
-    <h1>CSV Tables</h1>
-	<label for="csvFile">CSV File Input:</label>
-	<input type="file" id="csvFile" name="csvFile">
+	<div id="saveAlert" class="alert alert-primary alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 75px; border-radius: 0; font-size: 20px;">
+		Таблица сохранена
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+	<header class="d-flex flex-wrap align-items-center justify-content-between bg-white custom-header px-15">
+        <img class="img-fluid " style="width: 400px; height: auto;" src="./images/logo.png"/>
 
-    <h2>Table Selection:</h2>
-	<select id="csvSelect" name="csvSelect">
-		<option value="">Choose a table</option>
-	</select>
-	<button type="submit" onclick="deleteCsv()">Delete Table</button>
+        <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
+            <li><a href="#" id="importLink" class="nav-link px-2 link-primary fs-2">Просмотр таблиц</a></li>
+            <li><a href="/rtsp" id="viewCamerasLink" class="nav-link px-2 link-primary fs-2">Просмотр камер</a></li>
+        </ul>
 
-    <h2>CSV Output:</h2>
-    <pre id="output"></pre>
+        <div class="col-md-3 text-end">
+            <button type="button" id="loginBtn" class="btn btn-outline-dark me-2 fs-2 rounded-pill">Вход</button>
+            <button type="button" id="registerBtn" class="btn btn-outline-dark fs-2 rounded-pill ">Регистрация</button>
+        </div>
+    </header>
+
+	<div class="container mt-5" id="importContainer">
+		<h1 class="mb-3">Добавление таблиц CSV</h1>
+		<label for="csvFile" class="custom-file-upload">
+			<input type="file" id="csvFile" name="csvFile" accept=".csv" style="display:none;">
+			Нажмите для загрузки
+		</label>
+
+		<h1 class="mt-5 mb-3">Просмотр таблиц CSV</h1>
+        <div class="form-group">
+            <select class="form-control" id="csvSelect" name="csvSelect">
+                <option value="">Выберите таблицу</option>
+                <!-- Ваши таблицы CSV -->
+            </select>
+        </div>
+        <button type="button" class="btn btn-danger mt-2 mb-3" onclick="deleteCsv()">Удалить таблицу</button>
+
+		<table id="csvTable" class="display">
+            
+        </table>
+
+		<div style="display: none;">
+			<h2 class="mt-5">CSV логи:</h2>
+			<pre id="output"></pre>
+		</div>
+
+        
+
+		
+	</div>
+    
+    
+
+	<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js"></script>
+    <script src="https://cdn.datatables.net/plug-ins/2.0.8/sorting/datetime-moment.js"></script>
 
     <script>
         const apiBaseUrl = 'http://localhost:8080/api'; // Укажите здесь IP-адрес и порт сервера API
@@ -48,6 +93,7 @@
 				return;
 			}
 			
+			
 			const formData = new FormData();
 			formData.append('csvFile', csvFile);
 
@@ -64,8 +110,11 @@
 					const option = document.createElement('option');
 					option.textContent = csvName;
 					document.getElementById('csvSelect').appendChild(option);
-					document.getElementById('csvSelect').value=csvName;
-					document.getElementById('csvSelect').dispatchEvent(new Event('change'));
+					event.target.value = '';
+					$('#saveAlert').show();
+					setTimeout(function() {
+						$('#saveAlert').fadeOut('slow');
+					}, 3000);
 				}
 			})
 			.catch((error) => {
@@ -77,10 +126,6 @@
 		document.getElementById('csvSelect').addEventListener('change', function(event) {
 			const selectElement = event.target;
 			const csvName = selectElement.value;
-
-			if (csvName === '') {
-				return;
-			}
 			
 			fetch(`${apiBaseUrl}/csv/path`, {
                 method: 'POST',
@@ -96,7 +141,125 @@
 				document.getElementById('output').innerText += `Error: ${error}\n`;
 				console.error('Error:', error);
 			});
+
+			showCsv()
 		});
+
+		function showCsv() {
+			const csvName = document.getElementById('csvSelect').value;
+			if (csvName.length < 1 || csvName === 'Выберите таблицу') {
+				$('#csvTable_wrapper').css("display", "none")
+				return;
+			}
+			else {
+				$('#csvTable_wrapper').css("display", "block")
+			}
+			
+
+			fetch(`/csv/${csvName}`).then(response => {
+				if (!response.ok) {
+					throw new Error("HTTP error " + response.status);
+				}
+				return response.blob();
+			})
+			.then(blob => {
+				let file = new File([blob], csvName);
+				if (file) {
+					const reader = new FileReader();
+
+					reader.onload = function(e) {
+                        const contents = e.target.result;
+                        const lines = contents.split('\n').filter(line => line.trim() !== '');
+                        const headers = lines[0].split(';').map(header => header.trim());
+                        const rows = lines.slice(1);
+
+                        // Очистка существующей таблицы
+                        $('#csvTable').html(
+							`<thead>
+								<tr id="csvTableHead"></tr>
+							</thead>
+							<tbody id="csvTableBody"></tbody>
+						`);
+
+                        // Установка заголовков таблицы
+                        headers.forEach(header => {
+                            $('#csvTableHead').append(`<th>${header}</th>`);
+                        });
+
+                        // Установка строк таблицы
+                        rows.forEach(row => {
+                            const cells = row.split(';').map(cell => cell.trim());
+                            const rowHtml = cells.map(cell => `<td>${cell}</td>`).join('');
+                            $('#csvTableBody').append(`<tr>${rowHtml}</tr>`);
+                        });
+
+                        // Уничтожение и пересоздание DataTable для правильной инициализации
+                        if ($.fn.DataTable.isDataTable('#csvTable')) {
+                            $('#csvTable').DataTable().clear().destroy();
+                        }
+                        
+                        // Подключение кастомного рендера для сортировки дат
+                        $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
+
+                        $('#csvTable').DataTable({
+                            destroy: true,
+                            autoWidth: false,
+                            language: {
+                                "processing": "Подождите...",
+                                "search": "Поиск:",
+                                "lengthMenu": "Показать _MENU_ записей",
+                                "info": "Записи с _START_ до _END_ из _TOTAL_ записей",
+                                "infoEmpty": "Записи с 0 до 0 из 0 записей",
+                                "infoFiltered": "(отфильтровано из _MAX_ записей)",
+                                "infoPostFix": "",
+                                "loadingRecords": "Загрузка записей...",
+                                "zeroRecords": "Ничего не найдено",
+                                "emptyTable": "В таблице отсутствуют данные",
+                                "paginate": {
+                                    "first": "Первая",
+                                    "previous": "Предыдущая",
+                                    "next": "Следующая",
+                                    "last": "Последняя"
+                                },
+                                "aria": {
+                                    "sortAscending": ": активировать для сортировки столбца по возрастанию",
+                                    "sortDescending": ": активировать для сортировки столбца по убыванию"
+                                }
+                            },
+                            initComplete: function() {
+							// Добавляем фильтр-поиск для каждого столбца
+								this.api().columns().every(function() {
+									const column = this;
+									$(column.header()).find('input').remove(); // Очищаем заголовок столбца перед добавлением нового поля ввода
+									const searchInput = $(`<input type="text" placeholder="Поиск по столбцу" class="form-control"/>`)
+										.appendTo($(column.header()))
+										.on('keyup change clear', function() {
+											if (column.search() !== this.value) {
+												column
+													.search(this.value)
+													.draw();
+											}
+										});
+									searchInput.on('click', function(e) {
+										e.stopPropagation();
+									});
+								});
+							}
+                        });
+
+						$('#csvTable').DataTable().columns().header().to$().each(function(index) {
+    $(this).text(headers[index]);
+});
+                    };
+					reader.readAsText(file, 'CP1251');
+				}
+			})
+			.catch(function() {
+				console.log("Ошибка при загрузке файла.");
+			});
+			
+			
+		}
 
 		function deleteCsv() {
 			const csvName = document.getElementById('csvSelect').value;
@@ -117,6 +280,7 @@
 				document.getElementById('output').innerText += data + '\n';
                 var selectBox = document.getElementById('csvSelect')
 				selectBox.remove(selectBox.selectedIndex);
+				showCsv()
 			})
 			.catch(error => {
                 console.error('Error:', error);
