@@ -7,29 +7,52 @@
     <link href="https://vjs.zencdn.net/7.14.3/video-js.css" rel="stylesheet">
     <script src="https://vjs.zencdn.net/7.14.3/video.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/videojs-http-streaming@1.13.3/dist/videojs-http-streaming.min.js"></script>
+    <link rel="stylesheet" th:href="@{/styles/bootstrap.min.css}" />
+	<link rel="stylesheet" th:href="@{/styles/settings.css}" />
 </head>
 <body>
-    <h1>RTSP Stream</h1>
-    <form id="streamForm" onsubmit="return false;">
-        <label for="rtspName">Name of RTSP URL:</label>
-        <input type="text" id="rtspName" name="rtspName" required>
-        <label for="rtspUrl">RTSP URL:</label>
-        <input type="text" id="rtspUrl" name="rtspUrl" required>
-        <button type="submit" onclick="saveLink()">Save Link</button>
+    <header class="d-flex flex-wrap align-items-center justify-content-between bg-white custom-header px-15">
+        <img class="img-fluid " style="width: 400px; height: auto;" src="./images/logo.png"/>
+
+        <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
+            <li><a href="/csv" id="importLink" class="nav-link px-2 link-primary fs-2">Просмотр таблиц</a></li>
+            <li><a href="#" id="viewCamerasLink" class="nav-link px-2 link-primary fs-2">Просмотр камер</a></li>
+        </ul>
+
+        <div class="col-md-3 text-end">
+            <button type="button" id="loginBtn" class="btn btn-outline-dark me-2 fs-2 rounded-pill">Вход</button>
+            <button type="button" id="registerBtn" class="btn btn-outline-dark fs-2 rounded-pill ">Регистрация</button>
+        </div>
+    </header>
+  <div class="container mt-5">
+    <h1 class="mt-3 mb-2">Просмотр камер</h1>
+    <form id="streamForm" onsubmit="return false;" class="mb-3">
+        <div class="mb-2">
+            <label for="rtspName" class="form-label">Название RTSP потока:</label>
+            <input type="text" id="rtspName" name="rtspName" class="form-control" required>
+        </div>
+        <div class="mb-2">
+            <label for="rtspUrl" class="form-label">RTSP поток:</label>
+            <input type="text" id="rtspUrl" name="rtspUrl" class="form-control" required>
+        </div>
+        <button type="submit" onclick="saveLink()" class="btn btn-primary mb-2">Сохранить поток</button>
     </form>
 
-    <h2>Link Selection:</h2>
-    <select id="rtspSelect" name="rtspSelect">
-        <option value="">Choose a link</option>
-    </select>
-    <button type="submit" onclick="deleteLink()">Delete Link</button>
-    <h2></h2>
-    <button type="submit" onclick="startStream()">Start Stream</button>
+    <h2 class="py-2">Выбор потока:</h2>
+    <div class="mb-2">
+        <select id="rtspSelect" name="rtspSelect" class="form-select">
+            <option value="">Выберите поток</option>
+        </select>
+    </div>
+    <div class="mb-2 d-flex align-items-center">
+        <button type="submit" onclick="startStream()" class="btn btn-success">Смотреть стрим</button>
+        <button type="submit" id="muteButton" onclick="muteButton()" class="btn btn-secondary ml-2">Пауза</button>
+        <button type="submit" onclick="deleteLink()" class="btn btn-danger ml-2">Удалить поток</button>
+    </div>
 
-    <h2>Stream Output:</h2>
-    <pre id="output"></pre>
-    <video id="streamVideo" class="video-js vjs-default-skin" controls autoplay></video>
-    <button type="submit" id="muteButton" onclick="muteButton()">Mute</button>
+    <pre id="output" class="d-none"></pre>
+    <video id="streamVideo" class="video-js vjs-default-skin w-100 h-auto mt-4 mb-5" controls autoplay></video>
+</div>
 
     <script>
         const apiBaseUrl = 'http://localhost:8080/api';
@@ -56,7 +79,7 @@
         function muteButton() {
             var streamVideo = document.getElementById('streamVideo');
             streamVideo.muted = !streamVideo.muted;
-            document.getElementById('muteButton').textContent = streamVideo.muted ? 'Unmute' : 'Mute';
+            document.getElementById('muteButton').textContent = streamVideo.muted ? 'Продолжить' : 'Пауза';
         }
         
         function saveLink() {
