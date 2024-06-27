@@ -6,11 +6,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.rtsp.dto.UserDTO;
 import com.example.rtsp.dto.UserRequest;
 import com.example.rtsp.model.User;
 import com.example.rtsp.service.UserService;
@@ -26,6 +28,12 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    @GetMapping("/")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN')")
+    public Iterable<User> getUsers() {
+        return userService.getUsers();
+    }
+
     @PostMapping("/signup")
     public User signUp(@RequestBody UserRequest request) {
         return userService.signUp(request);
@@ -39,6 +47,12 @@ public class UserController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
         return userService.logout(request, response);
+    }
+
+    @PutMapping("/updateRole")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN')")
+    public User updateRole(@RequestBody UserDTO user) {
+        return userService.updateRole(user);
     }
 
     @GetMapping("/user")

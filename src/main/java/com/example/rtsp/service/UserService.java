@@ -1,5 +1,7 @@
 package com.example.rtsp.service;
 
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -12,6 +14,7 @@ import org.springframework.security.web.authentication.logout.SecurityContextLog
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Service;
 
+import com.example.rtsp.dto.UserDTO;
 import com.example.rtsp.dto.UserRequest;
 import com.example.rtsp.model.User;
 import com.example.rtsp.repository.UserRepository;
@@ -30,6 +33,10 @@ public class UserService {
     private PasswordEncoder passwordEncoder;
     @Autowired
     private AuthenticationManager authenticationManager;
+
+    public Iterable<User> getUsers() {
+        return userRepository.findAll();
+    }
 
     public User signUp(UserRequest registrationRequest) {
         if (userRepository.findByUsername(registrationRequest.getUsername()).isPresent()) {
@@ -65,6 +72,20 @@ public class UserService {
             new SecurityContextLogoutHandler().logout(request, response, auth);
         }
         return ResponseEntity.ok("Logout successful");
+    }
+
+    public User updateRole(UserDTO updatedUser) {
+        Optional<User> optionalUser = userRepository.findById(updatedUser.getId());
+
+        if (optionalUser.isPresent()) {
+            User existingUser = optionalUser.get();
+            existingUser.setRole(updatedUser.getRole());
+            userRepository.save(existingUser);
+            
+            return existingUser;
+        } else {
+            throw new IllegalArgumentException("User not found");
+        }
     }
 
     public User getUser(String username) {
