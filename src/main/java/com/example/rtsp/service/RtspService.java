@@ -6,66 +6,117 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import com.example.rtsp.model.RtspLink;
+import com.example.rtsp.model.User;
 import com.example.rtsp.repository.RtspLinkRepository;
+import com.example.rtsp.repository.UserRepository;
 
+import jakarta.servlet.http.HttpSession;
+import jakarta.transaction.Transactional;
+
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
+@Transactional
 public class RtspService {
 
     @Autowired
     private RtspLinkRepository rtspLinkRepository;
 
-    private Map<Long, Process> ffmpegProcesses = new HashMap<>();
+    @Autowired
+    private UserRepository userRepository;
 
+    private Map<Long, Process> ffmpegProcesses = new HashMap<>();
+    
     @Value("${server.static.path}")
     private String staticPath;
 
     public Iterable<RtspLink> getRtspLinks() {
         return rtspLinkRepository.findAll();
     }
+
+    public List<String> getRtspLinksByUser(HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        User user = userRepository.findByUsername(username).get();
+
+        List<String> rtspLinks = new ArrayList<>();
+        List<RtspLink> userRtspLinks = rtspLinkRepository.findAllByUser(user);
+
+        for (RtspLink rtspLink : userRtspLinks) {
+            String linkName = rtspLink.getNames().get(user);
+            if (linkName != null) {
+                rtspLinks.add(linkName);
+            }
+        }
+
+        return rtspLinks;
+    }
     
-    public ResponseEntity<?> saveRtspLink(String rtspName, String rtspUrl) {
+    public ResponseEntity<?> saveRtspLink(String rtspName, String rtspUrl, HttpSession session) {
         if (rtspName.isEmpty() || rtspUrl.isEmpty()) {
             return ResponseEntity.badRequest().body("Rtsp name or url cannot be null");
         }
-        if (rtspLinkRepository.findByName(rtspName) != null) {
+        
+        String username = (String) session.getAttribute("username");
+        User user = userRepository.findByUsername(username).get();
+
+        if (rtspLinkRepository.findByUserAndName(user, rtspName) != null) {
             return ResponseEntity.badRequest().body("Rtsp link with this name already exists");
-        }
-        if (rtspLinkRepository.findByUrl(rtspUrl) != null) {
-            return ResponseEntity.badRequest().body("This rtsp link already exists by name: " + rtspLinkRepository.findByUrl(rtspUrl).getName());
         }
 
         RtspLink rtspLink = new RtspLink();
-        rtspLink.setName(rtspName);
-        rtspLink.setUrl(rtspUrl);
+
+        if (rtspLinkRepository.findByUrl(rtspUrl) == null) {
+            rtspLink.setUrl(rtspUrl);
+            rtspLink.getNames().put(user, rtspName);
+        } else {
+            rtspLink = rtspLinkRepository.findByUrl(rtspUrl);
+            rtspLink.getNames().put(user, rtspName);
+        }
+
         rtspLinkRepository.save(rtspLink);
 
         return ResponseEntity.ok().body("Rtsp link saved");
     }
 
-    public ResponseEntity<?> deleteRtspLink(String rtspName) {
-        RtspLink rtspLink = rtspLinkRepository.findByName(rtspName);
-        if (rtspLink != null) {
-            rtspLinkRepository.deleteById(rtspLink.getId());
-            return ResponseEntity.ok().body("Rtsp link deleted");
-        } else {
+    public ResponseEntity<?> deleteRtspLink(String rtspName, HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        User user = userRepository.findByUsername(username).get();
+
+        RtspLink rtspLink = rtspLinkRepository.findByUserAndName(user, rtspName);
+
+        if (rtspLink == null) {
             return ResponseEntity.badRequest().body("Rtsp link not found");
         }
+
+        rtspLink.getNames().remove(user, rtspName);
+        if (rtspLink.getNames().isEmpty()) {
+            rtspLinkRepository.deleteById(rtspLink.getId());
+        }
+
+        rtspLinkRepository.save(rtspLink);
+        
+        return ResponseEntity.ok().body("Rtsp link deleted");
     }
 
-    public String startStream(String rtspName) {
-        RtspLink rtspLink = rtspLinkRepository.findByName(rtspName);
+    public ResponseEntity<?> startStream(String rtspName, HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        User user = userRepository.findByUsername(username).get();
+        RtspLink rtspLink = rtspLinkRepository.findByUserAndName(user, rtspName);
         String rtspUrl = rtspLink.getUrl();
+        Path path = Paths.get(staticPath).resolve("rtsp").resolve(rtspLink.getId().toString());
+        String outputPath = path.resolve("playlist.m3u8").toString();
 
-        String outputPath = staticPath + "rtsp/" + rtspLink.getId() + "_playlist.m3u8";
         ProcessBuilder processBuilder = new ProcessBuilder(
-            "ffmpeg",
+            "C:\\Users\\Maxim\\Downloads\\ffmpeg-2021-12-12-git-996b13fac4-full_build\\bin\\ffmpeg",
             "-rtsp_transport", "tcp",
             "-i", rtspUrl,
             "-analyzeduration", "5000000",
@@ -86,25 +137,46 @@ public class RtspService {
             outputPath
         );
 
-        processBuilder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-        processBuilder.redirectError(ProcessBuilder.Redirect.DISCARD);
+        //processBuilder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+        //processBuilder.redirectError(ProcessBuilder.Redirect.DISCARD);
 
-        // Path without m3u8 file
-        Path pathWithoutM3u8 = Paths.get(staticPath + "rtsp");
-        if (!Files.exists(pathWithoutM3u8)) {
+        if (!Files.exists(path)) {
             try {
-                Files.createDirectories(pathWithoutM3u8);
+                Files.createDirectory(path);
             } catch (Exception e) {
-                e.printStackTrace();
+                return ResponseEntity.badRequest().body("Error creating directory");
             }
         }
 
         try {
             if (ffmpegProcesses.containsKey(rtspLink.getId())) {
-                return "/rtsp/" + rtspLink.getId() + "_playlist.m3u8";
+                return ResponseEntity.ok().body("/rtsp/" + rtspLink.getId() + "/playlist.m3u8");
             }
+
             Process process = processBuilder.start();
             ffmpegProcesses.put(rtspLink.getId(), process);
+
+            new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        System.out.println(line);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+            new Thread(() -> {
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        System.err.println(line);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }).start();
 
             while (!Files.exists(Paths.get(outputPath))) {
                 try {
@@ -115,10 +187,10 @@ public class RtspService {
                 }
             }
             Thread.sleep(1000);
-            return "/rtsp/" + rtspLink.getId() + "_playlist.m3u8";
+            return ResponseEntity.ok().body("/rtsp/" + rtspLink.getId() + "/playlist.m3u8");
         } catch (Exception e) {
             e.printStackTrace();
-            return "Error: " + e.getMessage();
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
 
@@ -128,13 +200,13 @@ public class RtspService {
             process.destroy();
             ffmpegProcesses.remove(id);
 
-            String outputPath = staticPath + "rtsp/" + id + "_playlist.m3u8";
+            String outputPath = staticPath + "rtsp/" + id + "/playlist.m3u8";
             File outputFile = new File(outputPath);
             if (outputFile.exists()) {
                 outputFile.delete();
             }
             // Удаление всех файлов сегментов .ts
-            File dir = new File(staticPath +"rtsp/");
+            File dir = new File(staticPath + "rtsp/" + id);
             for (File file : dir.listFiles()) {
                 if (file.getName().matches(id + "_(.*).ts")) {
                     file.delete();

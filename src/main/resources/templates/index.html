@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Application</title>
+    <link href="https://vjs.zencdn.net/7.14.3/video-js.css" rel="stylesheet">
+    <script src="https://vjs.zencdn.net/7.14.3/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/videojs-http-streaming@1.13.3/dist/videojs-http-streaming.min.js"></script>
+    <style>
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1; 
+            padding-top: 60px; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgb(0,0,0); 
+            background-color: rgba(0,0,0,0.4);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <button id="csvPageButton">CSV Tables</button>
+            <button id="rtspPageButton">RTSP Stream</button>
+            <button id="logoutButton" style="display:none;">Logout</button>
+        </nav>
+    </header>
+    <main>
+        <h1>Welcome to Our Site</h1>
+        <p>Click on the buttons above to navigate through different functionalities.</p>
+    </main>
+
+    <div id="csvPage" style="display:none;">
+        <h1>CSV Tables</h1>
+        <label for="csvFile">CSV File Input:</label>
+        <input type="file" id="csvFile" name="csvFile">
+        <h2>Table Selection:</h2>
+        <select id="csvSelect" name="csvSelect">
+            <option value="">Choose a table</option>
+        </select>
+        <button type="submit" onclick="deleteCsv()">Delete Table</button>
+        <h2>CSV Output:</h2>
+        <pre id="output"></pre>
+    </div>
+
+    <div id="rtspPage" style="display:none;">
+        <h1>RTSP Stream</h1>
+        <form id="streamForm" onsubmit="return false;">
+            <label for="rtspName">Name of RTSP URL:</label>
+            <input type="text" id="rtspName" name="rtspName" required>
+            <label for="rtspUrl">RTSP URL:</label>
+            <input type="text" id="rtspUrl" name="rtspUrl" required>
+            <button type="submit" onclick="saveLink()">Save Link</button>
+        </form>
+        <h2>Link Selection:</h2>
+        <select id="rtspSelect" name="rtspSelect">
+            <option value="">Choose a link</option>
+        </select>
+        <button type="submit" onclick="deleteLink()">Delete Link</button>
+        <button type="submit" onclick="startStream()">Start Stream</button>
+        <h2>Stream Output:</h2>
+        <pre id="output"></pre>
+        <video id="streamVideo" class="video-js vjs-default-skin" controls autoplay></video>
+        <button type="submit" id="muteButton" onclick="muteButton()">Mute</button>
+    </div>
+
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('registerModal')">&times;</span>
+            <form id="registerForm">
+                <h2>Register</h2>
+                <input type="text" id="registerUsername" placeholder="Username" required>
+                <input type="password" id="registerPassword" placeholder="Password" required>
+                <button type="submit">Register</button>
+                <p>Already have an account? <a href="#" onclick="openModal('loginModal')">Login</a></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('loginModal')">&times;</span>
+            <form id="loginForm">
+                <h2>Login</h2>
+                <input type="text" id="loginUsername" placeholder="Username" required>
+                <input type="password" id="loginPassword" placeholder="Password" required>
+                <button type="submit">Login</button>
+                <p>Don't have an account? <a href="#" onclick="openModal('registerModal')">Register</a></p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const apiBaseUrl = 'http://localhost:8080/api';
+        let ws;
+
+        document.getElementById('csvPageButton').addEventListener('click', () => {
+            if (!isUserLoggedIn()) {
+                openModal('loginModal');
+            } else {
+                showPage('csvPage');
+            }
+        });
+
+        document.getElementById('rtspPageButton').addEventListener('click', () => {
+            if (!isUserLoggedIn()) {
+                openModal('loginModal');
+            } else {
+                showPage('rtspPage');
+            }
+        });
+
+        document.getElementById('logoutButton').addEventListener('click', logout);
+
+        function showPage(pageId) {
+            document.querySelector('main').style.display = 'none';
+            document.getElementById('csvPage').style.display = 'none';
+            document.getElementById('rtspPage').style.display = 'none';
+            document.getElementById(pageId).style.display = 'block';
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target.className === 'modal') {
+                event.target.style.display = 'none';
+            }
+        };
+
+        function isUserLoggedIn() {
+            return localStorage.getItem('loggedIn') === 'true';
+        }
+
+        function setLoggedIn(loggedIn) {
+            localStorage.setItem('loggedIn', loggedIn);
+            document.getElementById('logoutButton').style.display = loggedIn ? 'block' : 'none';
+        }
+
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+
+            fetch(`${apiBaseUrl}/user/signup`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.errors) {
+                    alert('Registration error: ' + JSON.stringify(data.errors));
+                } else {
+                    alert('Registration successful');
+                    closeModal('registerModal');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Registration failed: ' + error);
+            });
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            fetch(`${apiBaseUrl}/user/signin`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password }),
+                credentials: 'include' // Include cookies with the request
+            })
+            .then(response => {
+                if (response.ok) {
+                    setLoggedIn(true);
+                    alert('Login successful');
+                    closeModal('loginModal');
+                } else {
+                    response.json().then(data => {
+                        alert('Login error: ' + (data.message || 'Unknown error'));
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Login failed: ' + error);
+            });
+        });
+
+        function logout() {
+            fetch(`${apiBaseUrl}/user/logout`, {
+                method: 'POST',
+                credentials: 'include' // Include cookies with the request
+            })
+            .then(response => {
+                if (response.ok) {
+                    setLoggedIn(false);
+                    alert('Logout successful');
+                    window.location.reload();
+                } else {
+                    alert('Logout failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Logout failed: ' + error);
+            });
+        }
+
+        if (isUserLoggedIn()) {
+            setLoggedIn(true);
+        }
+
+        // CSV Page logic
+        fetch(`${apiBaseUrl}/csv/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            credentials: 'include' // Include cookies with the request
+        })
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(csv => {
+                const option = document.createElement('option');
+                option.textContent = csv.name;
+                document.getElementById('csvSelect').appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+
+        document.getElementById('csvFile').addEventListener('change', function(event) {
+            const fileInput = event.target;
+            const csvFile = fileInput.files[0];
+
+            if (!csvFile) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('csvFile', csvFile);
+
+            fetch(`${apiBaseUrl}/csv/save`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include' // Include cookies with the request
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('output').innerText += data + '\n';
+                const prefix = 'File saved: ';
+                if (data.startsWith(prefix)) {
+                    const csvName = data.substring(prefix.length);
+                    const option = document.createElement('option');
+                    option.textContent = csvName;
+                    document.getElementById('csvSelect').appendChild(option);
+                    document.getElementById('csvSelect').value = csvName;
+                    document.getElementById('csvSelect').dispatchEvent(new Event('change'));
+                }
+            })
+            .catch((error) => {
+                document.getElementById('output').innerText += error + '\n';
+                console.error('Error:', error);
+            });
+        });
+
+        document.getElementById('csvSelect').addEventListener('change', function(event) {
+            const selectElement = event.target;
+            const csvName = selectElement.value;
+
+            if (csvName === '') {
+                return;
+            }
+
+            fetch(`${apiBaseUrl}/csv/path`, {
+                method: 'POST',
+                body: new URLSearchParams({
+                    csvName: csvName
+                }),
+                credentials: 'include' // Include cookies with the request
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('output').innerText += `File path: ${data}\n`;
+            })
+            .catch((error) => {
+                document.getElementById('output').innerText += `Error: ${error}\n`;
+                console.error('Error:', error);
+            });
+        });
+
+        function deleteCsv() {
+            const csvName = document.getElementById('csvSelect').value;
+            if (csvName === '') return;
+
+            fetch(`${apiBaseUrl}/csv/delete`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    csvName: csvName
+                }),
+                credentials: 'include' // Include cookies with the request
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('output').innerText += data + '\n';
+                var selectBox = document.getElementById('csvSelect');
+                selectBox.remove(selectBox.selectedIndex);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        // RTSP Page logic
+        fetch(`${apiBaseUrl}/rtsp/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            credentials: 'include' // Include cookies with the request
+        })
+        .then(response => response.json())
+        .then(data => {
+            data.forEach(rtspName => {
+                const option = document.createElement('option');
+                option.textContent = rtspName;
+                document.getElementById('rtspSelect').appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+
+        function muteButton() {
+            var streamVideo = document.getElementById('streamVideo');
+            streamVideo.muted = !streamVideo.muted;
+            document.getElementById('muteButton').textContent = streamVideo.muted ? 'Unmute' : 'Mute';
+        }
+
+        function saveLink() {
+            const rtspName = document.getElementById('rtspName').value;
+            const rtspUrl = document.getElementById('rtspUrl').value;
+
+            fetch(`${apiBaseUrl}/rtsp/save`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    rtspName: rtspName,
+                    rtspUrl: rtspUrl
+                })
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('output').innerText += data + '\n';
+                if (data == 'Rtsp link saved') {
+                    const option = document.createElement('option');
+                    option.textContent = rtspName;
+                    document.getElementById('rtspSelect').appendChild(option);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function deleteLink() {
+            const rtspName = document.getElementById('rtspSelect').value;
+
+            fetch(`${apiBaseUrl}/rtsp/delete`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    rtspName: rtspName
+                })
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('output').innerText += data + '\n';
+                var selectBox = document.getElementById('rtspSelect');
+                selectBox.remove(selectBox.selectedIndex);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function startStream() {
+            const rtspName = document.getElementById('rtspSelect').value;
+            var username;
+
+            if (rtspName == '') {
+                document.getElementById('output').innerText += 'Please select a link\n';
+                return;
+            }
+
+            if (ws && ws.rtspName === rtspName) {
+                return;
+            } else if (ws) {
+                ws.close();
+            }
+
+            fetch(`${apiBaseUrl}/user/username`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                credentials: 'include'
+            })
+            .then(response => response.text())
+            .then(data => {
+                username = data;
+                ws = new WebSocket(`ws://localhost:8080/ws/stream?rtspName=${rtspName}&username=${username}`);
+                ws.rtspName = rtspName;
+                ws.username = username;
+
+                ws.onopen = () => {
+                    console.log('WebSocket connection opened');
+                };
+
+                ws.onmessage = (event) => {
+                    console.log('Message from server ', event.data);
+                    document.getElementById('output').innerText += event.data + '\n';
+                };
+
+                ws.onclose = (event) => {
+                    console.log('WebSocket connection closed', event);
+                };
+
+                ws.onerror = (error) => {
+                    console.log('WebSocket error', error);
+                };
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+
+            fetch(`${apiBaseUrl}/rtsp/stream`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    rtspName: rtspName
+                }),
+                credentials: 'include'
+            })
+            .then(response => response.text())
+            .then(data => {
+                console.log('Stream started', data);
+                document.getElementById('output').innerText += `Stream started: ${data}\n`;
+
+                var streamVideo = document.getElementById('streamVideo');
+                var player = videojs(streamVideo, {
+                    liveui: true,
+                    techOrder: ['html5'],
+                    html5: {
+                        vhs: {
+                            enableLowInitialPlaylist: true,
+                            enableWorker: true,
+                            useDevicePixelRatio: true,
+                            overrideNative: !videojs.browser.IS_SAFARI,
+                            handleManifestRedirects: true,
+                        }
+                    }
+                });
+
+                player.src({
+                    src: data,
+                    type: 'application/x-mpegURL'
+                });
+
+                player.play();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        window.addEventListener('beforeunload', () => {
+            if (ws) {
+                ws.close();
+            }
+        });
+    </script>
+</body>
+</html>

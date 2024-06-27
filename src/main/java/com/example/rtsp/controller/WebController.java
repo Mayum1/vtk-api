@@ -14,4 +14,9 @@ public class WebController {
     public String csv() {
         return "csv";
     }
+
+    @GetMapping("/")
+    public String index() {
+        return "index";
+    }
 }

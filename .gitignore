@@ -31,5 +31,6 @@ build/
 
 ### VS Code ###
 .vscode/
-/src/main/resources/static/**
+/src/main/resources/static/csv/**
+/src/main/resources/static/rtsp/**
 mydb.sqlite
