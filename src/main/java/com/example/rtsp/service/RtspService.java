@@ -13,9 +13,7 @@ import com.example.rtsp.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
 import jakarta.transaction.Transactional;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -137,8 +135,8 @@ public class RtspService {
             outputPath
         );
 
-        //processBuilder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
-        //processBuilder.redirectError(ProcessBuilder.Redirect.DISCARD);
+        processBuilder.redirectOutput(ProcessBuilder.Redirect.DISCARD);
+        processBuilder.redirectError(ProcessBuilder.Redirect.DISCARD);
 
         if (!Files.exists(path)) {
             try {
@@ -155,28 +153,6 @@ public class RtspService {
 
             Process process = processBuilder.start();
             ffmpegProcesses.put(rtspLink.getId(), process);
-
-            new Thread(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        System.out.println(line);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }).start();
-
-            new Thread(() -> {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        System.err.println(line);
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }).start();
 
             while (!Files.exists(Paths.get(outputPath))) {
                 try {
@@ -208,10 +184,16 @@ public class RtspService {
             // Удаление всех файлов сегментов .ts
             File dir = new File(staticPath + "rtsp/" + id);
             for (File file : dir.listFiles()) {
-                if (file.getName().matches(id + "_(.*).ts")) {
+                if (file.getName().matches(".*\\.ts$")) {
                     file.delete();
                 }
             }
+        }
+    }
+
+    public void stopAllStreams() {
+        for (Long id : ffmpegProcesses.keySet()) {
+            stopStream(id);
         }
     }
 }

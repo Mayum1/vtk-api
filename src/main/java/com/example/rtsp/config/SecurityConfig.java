@@ -47,8 +47,8 @@ public class SecurityConfig {
         return  http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/api/user/signup", "/api/user/signin").permitAll()
-                        .requestMatchers("/**").authenticated())
+                        .requestMatchers("/", "/api/user/signup", "/api/user/signin", "/styles/**", "/images/**").permitAll()
+                        .requestMatchers("/rtsp/**", "/csv/**", "/api/rtsp/**", "/api/csv/**").authenticated())
                 .formLogin(AbstractAuthenticationFilterConfigurer::permitAll)
                 .logout(logout -> logout
                     .logoutUrl("/api/user/logout")

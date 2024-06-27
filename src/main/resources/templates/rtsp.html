@@ -59,16 +59,17 @@
         let ws;
 
         fetch(`${apiBaseUrl}/rtsp/`, {
-            method: 'GET',
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
-            }
+            },
+            credentials: 'include'
         })
         .then(response => response.json())
         .then(data => {
-            data.forEach(rtsp => {
+            data.forEach(rtspName => {
                 const option = document.createElement('option');
-                option.textContent = rtsp.name;
+                option.textContent = rtspName;
                 document.getElementById('rtspSelect').appendChild(option);
             });
         })
@@ -135,6 +136,7 @@
 
         function startStream() {
             const rtspName = document.getElementById('rtspSelect').value;
+            var username;
 
             if (rtspName == '') {
                 document.getElementById('output').innerText += 'Please select a link\n';
@@ -147,25 +149,40 @@
                 ws.close();
             }
             
-            ws = new WebSocket(`ws://localhost:8080/ws/stream?rtspName=${rtspName}`);
-            ws.rtspName = rtspName;
+            fetch(`${apiBaseUrl}/user/username`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                credentials: 'include'
+            })
+            .then(response => response.text())
+            .then(data => {
+                username = data;
+                ws = new WebSocket(`ws://localhost:8080/ws/stream?rtspName=${rtspName}&username=${username}`);
+                ws.rtspName = rtspName;
+                ws.username = username;
 
-            ws.onopen = () => {
-                console.log('WebSocket connection opened');
-            };
+                ws.onopen = () => {
+                    console.log('WebSocket connection opened');
+                };
 
-            ws.onmessage = (event) => {
-                console.log('Message from server ', event.data);
-                document.getElementById('output').innerText += event.data + '\n';
-            };
+                ws.onmessage = (event) => {
+                    console.log('Message from server ', event.data);
+                    document.getElementById('output').innerText += event.data + '\n';
+                };
 
-            ws.onclose = (event) => {
-                console.log('WebSocket connection closed', event);
-            };
+                ws.onclose = (event) => {
+                    console.log('WebSocket connection closed', event);
+                };
 
-            ws.onerror = (error) => {
-                console.log('WebSocket error', error);
-            };
+                ws.onerror = (error) => {
+                    console.log('WebSocket error', error);
+                };
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
 
             fetch(`${apiBaseUrl}/rtsp/stream`, {
                 method: 'POST',
@@ -174,7 +191,8 @@
                 },
                 body: new URLSearchParams({
                     rtspName: rtspName
-                })
+                }),
+                credentials: 'include'
             })
             .then(response => response.text())
             .then(data => {
