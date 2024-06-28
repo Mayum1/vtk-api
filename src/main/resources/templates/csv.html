@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" th:href="@{/styles/bootstrap.min.css}" />
 	<link rel="stylesheet" th:href="@{/styles/settings.css}" />
-	 <link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+	<link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+	<link rel="icon" th:href="@{/images/camera_indoor.svg}">
     <title>CSV Tables</title>
 </head>
 <body>
@@ -22,8 +23,7 @@
         </ul>
 
         <div class="col-md-3 text-end">
-            <button type="button" id="loginBtn" class="btn btn-outline-dark me-2 fs-2 rounded-pill">Вход</button>
-            <button type="button" id="registerBtn" class="btn btn-outline-dark fs-2 rounded-pill ">Регистрация</button>
+            <button id="logoutButton" class="btn btn-outline-dark fs-2 rounded-pill ms-auto" onclick="logout()">Выйти</button>
         </div>
     </header>
 
@@ -51,10 +51,6 @@
 			<h2 class="mt-5">CSV логи:</h2>
 			<pre id="output"></pre>
 		</div>
-
-        
-
-		
 	</div>
     
     
@@ -66,12 +62,48 @@
 
     <script>
         const apiBaseUrl = 'http://localhost:8080/api'; // Укажите здесь IP-адрес и порт сервера API
+		function setLoggedIn(loggedIn) {
+            localStorage.setItem('loggedIn', loggedIn);
+        }
+		function logout() {
+			fetch(`${apiBaseUrl}/user/logout`, {
+				method: 'POST',
+				credentials: 'include' // Include cookies with the request
+			})
+			.then(response => {
+				if (response.ok) {
+					setLoggedIn(false);
+					window.location.href = '/'; // Redirect to the home page
+				} else {
+					alert('Logout failed');
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				alert('Logout failed: ' + error);
+			});
+		}
+
+		fetch(`${apiBaseUrl}/user/status`, {
+            method: 'GET',
+            credentials: 'include'
+        })
+        .then(response => {
+            if (!response.ok) {
+                setLoggedIn(false);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking session status:', error);
+            setLoggedIn(false);
+        });
 
         fetch(`${apiBaseUrl}/csv/`, {
-            method: 'GET',
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
-            }
+            },
+			credentials: 'include'
         })
         .then(response => response.json())
         .then(data => {
@@ -99,7 +131,8 @@
 
 			fetch(`${apiBaseUrl}/csv/save`, {
 				method: 'POST',
-				body: formData
+				body: formData,
+				credentials: 'include'
 			})
 			.then(response => response.text())
 			.then(data => {
@@ -131,7 +164,8 @@
                 method: 'POST',
                 body: new URLSearchParams({
 					csvName: csvName
-                })
+                }),
+				credentials: 'include'
             })
 			.then(response => response.text())
 			.then(data => {
@@ -146,118 +180,131 @@
 		});
 
 		function showCsv() {
-			const csvName = document.getElementById('csvSelect').value;
-			if (csvName.length < 1 || csvName === 'Выберите таблицу') {
-				$('#csvTable_wrapper').css("display", "none")
-				return;
-			}
-			else {
-				$('#csvTable_wrapper').css("display", "block")
-			}
-			
-
-			fetch(`/csv/${csvName}`).then(response => {
-				if (!response.ok) {
-					throw new Error("HTTP error " + response.status);
+			var username;
+			fetch(`${apiBaseUrl}/user/username`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                credentials: 'include'
+            })
+            .then(response => response.text())
+            .then(data => {
+                username = data;
+				const csvName = document.getElementById('csvSelect').value;
+				if (csvName.length < 1 || csvName === 'Выберите таблицу') {
+					$('#csvTable_wrapper').css("display", "none")
+					return;
 				}
-				return response.blob();
-			})
-			.then(blob => {
-				let file = new File([blob], csvName);
-				if (file) {
-					const reader = new FileReader();
+				else {
+					$('#csvTable_wrapper').css("display", "block")
+				}
 
-					reader.onload = function(e) {
-                        const contents = e.target.result;
-                        const lines = contents.split('\n').filter(line => line.trim() !== '');
-                        const headers = lines[0].split(';').map(header => header.trim());
-                        const rows = lines.slice(1);
+				fetch(`/csv/${username}/${csvName}`).then(response => {
+					if (!response.ok) {
+						throw new Error("HTTP error " + response.status);
+					}
+					return response.blob();
+				})
+				.then(blob => {
+					let file = new File([blob], csvName);
+					if (file) {
+						const reader = new FileReader();
 
-                        // Очистка существующей таблицы
-                        $('#csvTable').html(
-							`<thead>
-								<tr id="csvTableHead"></tr>
-							</thead>
-							<tbody id="csvTableBody"></tbody>
-						`);
+						reader.onload = function(e) {
+							const contents = e.target.result;
+							const lines = contents.split('\n').filter(line => line.trim() !== '');
+							const headers = lines[0].split(';').map(header => header.trim());
+							const rows = lines.slice(1);
 
-                        // Установка заголовков таблицы
-                        headers.forEach(header => {
-                            $('#csvTableHead').append(`<th>${header}</th>`);
-                        });
+							// Очистка существующей таблицы
+							$('#csvTable').html(
+								`<thead>
+									<tr id="csvTableHead"></tr>
+								</thead>
+								<tbody id="csvTableBody"></tbody>
+							`);
 
-                        // Установка строк таблицы
-                        rows.forEach(row => {
-                            const cells = row.split(';').map(cell => cell.trim());
-                            const rowHtml = cells.map(cell => `<td>${cell}</td>`).join('');
-                            $('#csvTableBody').append(`<tr>${rowHtml}</tr>`);
-                        });
+							// Установка заголовков таблицы
+							headers.forEach(header => {
+								$('#csvTableHead').append(`<th>${header}</th>`);
+							});
 
-                        // Уничтожение и пересоздание DataTable для правильной инициализации
-                        if ($.fn.DataTable.isDataTable('#csvTable')) {
-                            $('#csvTable').DataTable().clear().destroy();
-                        }
-                        
-                        // Подключение кастомного рендера для сортировки дат
-                        $.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
+							// Установка строк таблицы
+							rows.forEach(row => {
+								const cells = row.split(';').map(cell => cell.trim());
+								const rowHtml = cells.map(cell => `<td>${cell}</td>`).join('');
+								$('#csvTableBody').append(`<tr>${rowHtml}</tr>`);
+							});
 
-                        $('#csvTable').DataTable({
-                            destroy: true,
-                            autoWidth: false,
-                            language: {
-                                "processing": "Подождите...",
-                                "search": "Поиск:",
-                                "lengthMenu": "Показать _MENU_ записей",
-                                "info": "Записи с _START_ до _END_ из _TOTAL_ записей",
-                                "infoEmpty": "Записи с 0 до 0 из 0 записей",
-                                "infoFiltered": "(отфильтровано из _MAX_ записей)",
-                                "infoPostFix": "",
-                                "loadingRecords": "Загрузка записей...",
-                                "zeroRecords": "Ничего не найдено",
-                                "emptyTable": "В таблице отсутствуют данные",
-                                "paginate": {
-                                    "first": "Первая",
-                                    "previous": "Предыдущая",
-                                    "next": "Следующая",
-                                    "last": "Последняя"
-                                },
-                                "aria": {
-                                    "sortAscending": ": активировать для сортировки столбца по возрастанию",
-                                    "sortDescending": ": активировать для сортировки столбца по убыванию"
-                                }
-                            },
-                            initComplete: function() {
-							// Добавляем фильтр-поиск для каждого столбца
-								this.api().columns().every(function() {
-									const column = this;
-									$(column.header()).find('input').remove(); // Очищаем заголовок столбца перед добавлением нового поля ввода
-									const searchInput = $(`<input type="text" placeholder="Поиск по столбцу" class="form-control"/>`)
-										.appendTo($(column.header()))
-										.on('keyup change clear', function() {
-											if (column.search() !== this.value) {
-												column
-													.search(this.value)
-													.draw();
-											}
-										});
-									searchInput.on('click', function(e) {
-										e.stopPropagation();
-									});
-								});
+							// Уничтожение и пересоздание DataTable для правильной инициализации
+							if ($.fn.DataTable.isDataTable('#csvTable')) {
+								$('#csvTable').DataTable().clear().destroy();
 							}
-                        });
+							
+							// Подключение кастомного рендера для сортировки дат
+							$.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
 
-						$('#csvTable').DataTable().columns().header().to$().each(function(index) {
-    $(this).text(headers[index]);
-});
-                    };
-					reader.readAsText(file, 'CP1251');
-				}
+							$('#csvTable').DataTable({
+								destroy: true,
+								autoWidth: false,
+								language: {
+									"processing": "Подождите...",
+									"search": "Поиск:",
+									"lengthMenu": "Показать _MENU_ записей",
+									"info": "Записи с _START_ до _END_ из _TOTAL_ записей",
+									"infoEmpty": "Записи с 0 до 0 из 0 записей",
+									"infoFiltered": "(отфильтровано из _MAX_ записей)",
+									"infoPostFix": "",
+									"loadingRecords": "Загрузка записей...",
+									"zeroRecords": "Ничего не найдено",
+									"emptyTable": "В таблице отсутствуют данные",
+									"paginate": {
+										"first": "Первая",
+										"previous": "Предыдущая",
+										"next": "Следующая",
+										"last": "Последняя"
+									},
+									"aria": {
+										"sortAscending": ": активировать для сортировки столбца по возрастанию",
+										"sortDescending": ": активировать для сортировки столбца по убыванию"
+									}
+								},
+								initComplete: function() {
+								// Добавляем фильтр-поиск для каждого столбца
+									this.api().columns().every(function() {
+										const column = this;
+										$(column.header()).find('input').remove(); // Очищаем заголовок столбца перед добавлением нового поля ввода
+										const searchInput = $(`<input type="text" placeholder="Поиск по столбцу" class="form-control"/>`)
+											.appendTo($(column.header()))
+											.on('keyup change clear', function() {
+												if (column.search() !== this.value) {
+													column
+														.search(this.value)
+														.draw();
+												}
+											});
+										searchInput.on('click', function(e) {
+											e.stopPropagation();
+										});
+									});
+								}
+							});
+
+							$('#csvTable').DataTable().columns().header().to$().each(function(index) {
+		$(this).text(headers[index]);
+	});
+						};
+						reader.readAsText(file, 'CP1251');
+					}
+				})
+				.catch(function() {
+					console.log("Ошибка при загрузке файла.");
+				});
 			})
-			.catch(function() {
-				console.log("Ошибка при загрузке файла.");
-			});
-			
+			.catch(error => {
+                console.error('Error:', error);
+            });
 			
 		}
 
@@ -273,7 +320,8 @@
                 },
 				body: new URLSearchParams({
 					csvName: csvName
-				})
+				}),
+				credentials: 'include'
 			})
 			.then(response => response.text())
 			.then(data => {

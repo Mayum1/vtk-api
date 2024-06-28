@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Административная панель</title>
+    <!-- Подключение Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5 mb-5">Административная панель</h1>
+        <form>
+            <div class="form-group">
+                <label for="userSelect">Выберите пользователя:</label>
+                <select class="form-control" id="userSelect">
+                    <!-- Здесь будут добавлены элементы option -->
+                </select>
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="adminCheck">
+                <label class="form-check-label" for="adminCheck">Сделать администратором</label>
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="tableCheck">
+                <label class="form-check-label" for="tableCheck">Доступ к таблицам</label>
+            </div>
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="camCheck">
+                <label class="form-check-label" for="camCheck">Доступ к веб-камерам</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Выдать права</button>
+        </form>
+    </div>
+
+    <!-- Подключение jQuery и Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+
+    <!-- Ваш массив пользователей и функция для добавления элементов option -->
+    <script>
+        const apiBaseUrl = 'http://localhost:8080/api';
+        fetch(`${apiBaseUrl}/user/`, {
+				method: 'GET',
+				headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+				credentials: 'include'
+			})
+			.then(response => response.text())
+			.then(data => {
+                const users = JSON.parse(data);
+
+                let select = document.getElementById('userSelect');
+                let adminCheck = document.getElementById('adminCheck');
+                let tableCheck = document.getElementById('tableCheck');
+                let camCheck = document.getElementById('camCheck');
+                
+                for (let user of users) {
+                    let option = document.createElement('option');
+                    option.text = user.username;
+                    select.add(option);
+                }
+
+                if (users.length > 0) {
+                    select.value = users[0].username;
+                    checkRoles(users[0]);
+                }
+
+                select.addEventListener('change', function() {
+                    let selectedUser = users.find(user => user.username === select.value);
+                    checkRoles(selectedUser);
+                });
+
+                document.querySelector('form').addEventListener('submit', function(e) {
+                    e.preventDefault(); // Предотвращает перезагрузку страницы
+
+                    let selectedUser = users.find(user => user.username === select.value);
+
+                    if (selectedUser) {
+                        selectedUser.role = updateRoles(selectedUser);
+                    }
+
+                    fetch(`${apiBaseUrl}/user/updateRole`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(selectedUser),
+                        credentials: 'include'
+                    })
+                    .then(response => response.text())
+                    .then(data => {
+                        document.getElementById('output').innerText += data + '\n';
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                });
+			})
+			.catch(error => {
+                console.error('Error:', error);
+            });
+
+            function checkRoles(selectedUser) {
+                let adminCheck = document.getElementById('adminCheck');
+                let tableCheck = document.getElementById('tableCheck');
+                let camCheck = document.getElementById('camCheck');
+
+                if (selectedUser.role.includes('ROLE_CSV')) {
+                    tableCheck.checked = true;
+                } else {
+                    tableCheck.checked = false;
+                }
+                if (selectedUser.role.includes('ROLE_RTSP')) {
+                    camCheck.checked = true;
+                } else {
+                    camCheck.checked = false;
+                }
+                if (selectedUser.role.includes('ROLE_ADMIN')) {
+                    adminCheck.checked = true;
+                } else {
+                    adminCheck.checked = false;
+                }
+            }
+
+            function updateRoles(selectedUser) {
+                let adminCheck = document.getElementById('adminCheck');
+                let tableCheck = document.getElementById('tableCheck');
+                let camCheck = document.getElementById('camCheck');
+
+                let roles = selectedUser.role.split(',').map(role => role.trim());
+
+                if (adminCheck.checked) {
+                    roles = roles.filter(role => role !== 'ROLE_USER');
+                    if (!roles.includes('ROLE_ADMIN')) {
+                        roles.push('ROLE_ADMIN');
+                    }
+                } else {
+                    roles = roles.filter(role => role !== 'ROLE_ADMIN');
+                    if (!roles.includes('ROLE_USER')) {
+                        roles.push('ROLE_USER');
+                    }
+                }
+
+                if (tableCheck.checked) {
+                    if (!roles.includes('ROLE_CSV')) {
+                        roles.push('ROLE_CSV');
+                    }
+                } else {
+                    roles = roles.filter(role => role !== 'ROLE_CSV');
+                }
+
+                if (camCheck.checked) {
+                    if (!roles.includes('ROLE_RTSP')) {
+                        roles.push('ROLE_RTSP');
+                    }
+                } else {
+                    roles = roles.filter(role => role !== 'ROLE_RTSP');
+                }
+
+                return roles.join(', ');
+            }
+        </script>
+</body>
+</html>

@@ -10,6 +10,7 @@ import org.springframework.web.socket.server.support.HttpSessionHandshakeInterce
 
 import com.example.rtsp.handler.RtspWebSocketHandler;
 import com.example.rtsp.repository.RtspLinkRepository;
+import com.example.rtsp.repository.UserRepository;
 import com.example.rtsp.service.RtspService;
 
 @Configuration
@@ -22,15 +23,18 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Autowired
     private RtspLinkRepository rtspLinkRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(new RtspWebSocketHandler(rtspService, rtspLinkRepository), "/ws/stream")
+        registry.addHandler(new RtspWebSocketHandler(rtspService, rtspLinkRepository, userRepository), "/ws/stream")
             .addInterceptors(new HttpSessionHandshakeInterceptor())
             .setAllowedOrigins("*");
     }
 
     @Bean
     public RtspWebSocketHandler rtspWebSocketHandler() {
-        return new RtspWebSocketHandler(rtspService, rtspLinkRepository);
+        return new RtspWebSocketHandler(rtspService, rtspLinkRepository, userRepository);
     }
 }

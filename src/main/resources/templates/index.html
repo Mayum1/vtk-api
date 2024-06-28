@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>О нас</title>
+    <link rel="icon" th:href="@{/images/camera_indoor.svg}">
+    <link href="https://vjs.zencdn.net/7.14.3/video-js.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" th:href="@{/styles/bootstrap.min.css}" />
+	<link rel="stylesheet" type="text/css" th:href="@{/styles/settings.css}" />
+	<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+    <script src="https://vjs.zencdn.net/7.14.3/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/videojs-http-streaming@1.13.3/dist/videojs-http-streaming.min.js"></script>
+    <style>
+        .modal {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+
+            background-color: rgba(0, 0, 0, 0.5);
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            overflow: auto;
+            backdrop-filter: blur(10px);
+        }       
+
+        .modal-content {
+            width: 40%;
+            /* уменьшаем ширину до 40% */
+            height: 60%;
+            background-color: #fefefe;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #888;
+            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+            animation-name: animatetop;
+            animation-duration: 0.4s;
+        }
+
+        /* Добавьте @keyframes для всплывающего эффекта */
+        @keyframes animatetop {
+            from {
+                top: -300px;
+                opacity: 0
+            }
+
+            to {
+                top: 0;
+                opacity: 1
+            }
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-top: 50px;
+            margin-bottom: 0.5em;
+        }
+        p {
+            color: #666;
+            line-height: 1.6;
+            font-size: 1.2em;
+        }
+        main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+    </style>
+    
+</head>
+<body>
+    <header class="d-flex flex-wrap align-items-center justify-content-between bg-white custom-header px-15">
+        <img class="img-fluid " style="width: 400px; height: auto;" src="./images/logo.png"/>
+        <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
+            <li ><a href="/csv" id="csvPageButton" class="nav-link px-2 link-primary fs-2">Просмотр таблиц</a></li>
+            <li ><a href="/rtsp" id="rtspPageButton" class="nav-link px-2 link-primary fs-2">Просмотр камер</a></li>
+        </ul>
+        <div class="col-md-3 text-end">
+            <button type="button" id="loginBtn" class="btn btn-outline-dark me-2 fs-2 rounded-pill">Вход</button>
+            <button type="button" id="registerBtn" class="btn btn-outline-dark fs-2 rounded-pill ">Регистрация</button>
+            <button id="logoutButton" class="btn btn-outline-dark fs-2 rounded-pill ms-auto" style="display:none;">Выйти</button>
+        </div>
+    </header>
+    <main style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <h1 style="text-align: center;">Добро пожаловать на наш сайт!</h1>
+        <p style="text-align: center; max-width: 800px; margin-top: 20px;">
+            На нашем сайте вы можете просматривать и управлять своими таблицами CSV и потоками RTSP.
+            Для начала работы, пожалуйста, зарегистрируйтесь или войдите в свою учетную запись.
+            После входа в систему, вы сможете перейти к функциям "Просмотр таблиц" или "Просмотр камер".
+            "Просмотр таблиц" позволяет вам загружать, просматривать и удалять таблицы CSV.
+            "Просмотр камер" позволяет вам просматривать потоки RTSP в реальном времени.
+            Если у вас возникнут вопросы или проблемы, пожалуйста, свяжитесь с нами.
+        </p>
+        <img style="text-align: center; weight: 450px; height: 450px" src="./images/main.gif"/>
+    </main>
+    <div id="registerModal" >
+        <div class="modal">
+            <form id="registerForm" class="modal-content" style="font-size: 1.5em; width: 40%; margin: auto; padding: 30px; background-color: #fafafa; border: 2px solid #888; border-radius: 5px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <h2 style="text-align: center;">Регистрация</h2>
+                <input type="text" id="registerUsername" placeholder="Имя пользователя" required style="width: 80%; padding: 15px; margin: 10px 0; display: inline-block; border: 1px solid #ccc; box-sizing: border-box;">
+                <input type="password" id="registerPassword" placeholder="Пароль" required style="width: 80%; padding: 15px; margin: 10px 0 20px 0; display: inline-block; border: 1px solid #ccc; box-sizing: border-box;">
+                <button type="submit" class="btn btn-primary" style="width: 80%; padding: 14px 20px; color: white; border: none; cursor: pointer; font-size: 1em;">Зарегистрироваться</button>
+                <a href="#" onclick="openModal('loginModal')" style="color: dodgerblue; margin-top: 40px; !important">Уже есть аккаунт? Войти здесь</a>
+            </form>
+        </div>
+    </div>
+    <div id="loginModal" >
+        <div class="modal">
+            <form id="loginForm" class="modal-content" style="font-size: 1.5em; width: 40%; margin: auto; padding: 30px; background-color: #fafafa; border: 2px solid #888; border-radius: 5px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <h2 style="text-align: center;">Вход</h2>
+                <input type="text" id="loginUsername" placeholder="Имя пользователя" required style="width: 80%; padding: 15px; margin: 10px 0; display: inline-block; border: 1px solid #ccc; box-sizing: border-box;">
+                <input type="password" id="loginPassword" placeholder="Пароль" required style="width: 80%; padding: 15px; margin: 10px 0 20px 0; display: inline-block; border: 1px solid #ccc; box-sizing: border-box;">
+                <button type="submit"class="btn btn-primary" style="width: 80%; padding: 14px 20px; color: white; border: none; cursor: pointer; font-size: 1em;">Войти</button>
+                <a href="#" style="color: dodgerblue; margin-top: 40px;" onclick="openModal('registerModal')">Нет аккаунта? Создай здесь</a>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const apiBaseUrl = 'http://localhost:8080/api';
+        let ws;
+
+        document.getElementById('csvPageButton').addEventListener('click', (e) => {
+            if (!isUserLoggedIn()) {
+                e.preventDefault();
+                alert('Для ИМПОРТИРОВАНИЯ ТАБЛИЦ, необходимо зарегистрироваться или войти в систему.');
+            } else {
+                showPage('csvPage');
+            }
+        });
+
+        document.getElementById('rtspPageButton').addEventListener('click', (e) => {
+            if (!isUserLoggedIn()) {
+                e.preventDefault();
+                alert('Для ПРОСМОТРА ПОТОКОВ, необходимо зарегистрироваться или войти в систему.');
+            }
+            else {
+                showPage('rtspPage');
+            }
+        });
+
+        document.addEventListener("DOMContentLoaded", function() {
+            // Скрыть оба модальных окна при загрузке страницы
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('registerModal').style.display = 'none';
+
+            // Обработчики для кнопок "Вход" и "Регистрация"
+            document.getElementById('loginBtn').addEventListener('click', function (e) {
+                e.preventDefault();
+                document.getElementById('loginModal').style.display = 'block';
+            });
+            document.getElementById('registerBtn').addEventListener('click', function (e) {
+                e.preventDefault();
+                document.getElementById('registerModal').style.display = 'block';
+            });
+
+            // Обработчики для ссылок внутри модальных окон
+            document.querySelector('#loginModal a').addEventListener('click', function (e) {
+                e.preventDefault();
+                document.getElementById('loginModal').style.display = 'none';
+                document.getElementById('registerModal').style.display = 'block';
+            });
+            document.querySelector('#registerModal a').addEventListener('click', function (e) {
+                e.preventDefault();
+                document.getElementById('registerModal').style.display = 'none';
+                document.getElementById('loginModal').style.display = 'block';
+            });
+
+            // Обработчики для закрытия модальных окон
+            document.querySelectorAll('.close').forEach(function(closeButton) {
+                closeButton.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.getElementById('loginModal').style.display = 'none';
+                    document.getElementById('registerModal').style.display = 'none';
+                });
+            });
+
+            // Скрытие модальных окон при клике вне их области
+            window.addEventListener('click', function (e) {
+                if (e.target.classList.contains('modal')) {
+                    document.getElementById('loginModal').style.display = 'none';
+                    document.getElementById('registerModal').style.display = 'none';
+                }
+            });
+        });
+
+        document.getElementById('logoutButton').addEventListener('click', logout);
+
+        
+
+        function isUserLoggedIn() {
+            return localStorage.getItem('loggedIn') === 'true';
+        }
+
+        function setLoggedIn(loggedIn) {
+            localStorage.setItem('loggedIn', loggedIn);
+            document.getElementById('logoutButton').style.display = loggedIn ? 'block' : 'none';
+            document.getElementById('loginBtn').style.display = loggedIn ? 'none' : 'block';
+            document.getElementById('registerBtn').style.display = loggedIn ? 'none' : 'block';
+        }
+
+        if (isUserLoggedIn()) {
+            fetch(`${apiBaseUrl}/user/status`, {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    setLoggedIn(false);
+                }
+            })
+            .catch(error => {
+                console.error('Error checking session status:', error);
+                setLoggedIn(false);
+            });
+        }
+
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+
+            fetch(`${apiBaseUrl}/user/signup`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.errors) {
+                    alert('Registration error: ' + JSON.stringify(data.errors));
+                } else {
+                    document.getElementById('loginModal').style.display = 'none';
+                    document.getElementById('registerModal').style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Registration failed: ' + error);
+            });
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            console.log(e)
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            fetch(`${apiBaseUrl}/user/signin`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password }),
+                credentials: 'include' // Include cookies with the request
+            })
+            .then(response => {
+                if (response.ok) {
+                    setLoggedIn(true);
+                    document.getElementById('loginModal').style.display = 'none';
+                    document.getElementById('registerModal').style.display = 'none';
+                } else {
+                    response.json().then(data => {
+                        alert('Login error: ' + (data.message || 'Unknown error'));
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Login failed: ' + error);
+            });
+        });
+
+        function logout() {
+            fetch(`${apiBaseUrl}/user/logout`, {
+                method: 'POST',
+                credentials: 'include' // Include cookies with the request
+            })
+            .then(response => {
+                if (response.ok) {
+                    setLoggedIn(false);
+                    window.location.reload();
+                } else {
+                    alert('Logout failed');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Logout failed: ' + error);
+            });
+        }
+
+        if (isUserLoggedIn()) {
+            setLoggedIn(true);
+        }
+    </script>
+</body>
+</html>
