@@ -23,12 +23,12 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 public class SecurityConfig {
     @Bean
-    public UserDetailsService userDetailsService(){
+    public UserDetailsService userDetailsService() {
         return new UserDetailsServiceImpl();
     }
 
     @Bean
-    public AuthenticationProvider authenticationProvider(){
+    public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService());
         provider.setPasswordEncoder(passwordEncoder());
@@ -38,23 +38,24 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
         return http.getSharedObject(AuthenticationManagerBuilder.class)
-                   .authenticationProvider(authenticationProvider())
-                   .build();
+                .authenticationProvider(authenticationProvider())
+                .build();
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return  http
+        return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/api/user/signup", "/api/user/signin", "/styles/**", "/images/**").permitAll()
-                        .requestMatchers("/**").authenticated())
+                        .requestMatchers("/", "/api/user/signup", "/api/user/signin", "/styles/**", "/images/**")
+                        .permitAll()
+                        .requestMatchers("/rtsp/**", "/csv/**", "/api/rtsp/**", "/api/csv/**").authenticated())
                 .formLogin(AbstractAuthenticationFilterConfigurer::permitAll)
                 .logout(logout -> logout
-                    .logoutUrl("/api/user/logout")
-                    .invalidateHttpSession(true)
-                    .deleteCookies("JSESSIONID")
-                    .logoutSuccessHandler((request, response, authException) -> response.setStatus(200)))
+                        .logoutUrl("/api/user/logout")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                        .logoutSuccessHandler((request, response, authException) -> response.setStatus(200)))
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) -> response.sendError(401)))
                 .sessionManagement(session -> session
@@ -65,7 +66,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public PasswordEncoder passwordEncoder(){
+    public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(5);
     }
 }

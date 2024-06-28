@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" th:href="@{/styles/bootstrap.min.css}" />
 	<link rel="stylesheet" th:href="@{/styles/settings.css}" />
-	 <link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+	<link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
+	<link rel="icon" th:href="@{/images/camera_indoor.svg}">
     <title>CSV Tables</title>
 </head>
 <body>
@@ -22,8 +23,7 @@
         </ul>
 
         <div class="col-md-3 text-end">
-            <button type="button" id="loginBtn" class="btn btn-outline-dark me-2 fs-2 rounded-pill">Вход</button>
-            <button type="button" id="registerBtn" class="btn btn-outline-dark fs-2 rounded-pill ">Регистрация</button>
+            <button id="logoutButton" class="btn btn-outline-dark fs-2 rounded-pill ms-auto" onclick="logout()">Выйти</button>
         </div>
     </header>
 
@@ -51,10 +51,6 @@
 			<h2 class="mt-5">CSV логи:</h2>
 			<pre id="output"></pre>
 		</div>
-
-        
-
-		
 	</div>
     
     
@@ -66,7 +62,27 @@
 
     <script>
         const apiBaseUrl = 'http://localhost:8080/api'; // Укажите здесь IP-адрес и порт сервера API
-
+		function setLoggedIn(loggedIn) {
+            localStorage.setItem('loggedIn', loggedIn);
+        }
+		function logout() {
+			fetch(`${apiBaseUrl}/user/logout`, {
+				method: 'POST',
+				credentials: 'include' // Include cookies with the request
+			})
+			.then(response => {
+				if (response.ok) {
+					setLoggedIn(false);
+					window.location.href = '/'; // Redirect to the home page
+				} else {
+					alert('Logout failed');
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				alert('Logout failed: ' + error);
+			});
+		}
         fetch(`${apiBaseUrl}/csv/`, {
             method: 'POST',
             headers: {

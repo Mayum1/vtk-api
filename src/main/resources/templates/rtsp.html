@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/videojs-http-streaming@1.13.3/dist/videojs-http-streaming.min.js"></script>
     <link rel="stylesheet" th:href="@{/styles/bootstrap.min.css}" />
 	<link rel="stylesheet" th:href="@{/styles/settings.css}" />
+    <link rel="icon" th:href="@{/images/camera_indoor.svg}">
 </head>
 <body>
     <header class="d-flex flex-wrap align-items-center justify-content-between bg-white custom-header px-15">
@@ -18,10 +19,8 @@
             <li><a href="/csv" id="importLink" class="nav-link px-2 link-primary fs-2">Просмотр таблиц</a></li>
             <li><a href="#" id="viewCamerasLink" class="nav-link px-2 link-primary fs-2">Просмотр камер</a></li>
         </ul>
-
         <div class="col-md-3 text-end">
-            <button type="button" id="loginBtn" class="btn btn-outline-dark me-2 fs-2 rounded-pill">Вход</button>
-            <button type="button" id="registerBtn" class="btn btn-outline-dark fs-2 rounded-pill ">Регистрация</button>
+            <button id="logoutButton" class="btn btn-outline-dark fs-2 rounded-pill ms-auto" onclick="logout()">Выйти</button>
         </div>
     </header>
   <div class="container mt-5">
@@ -57,6 +56,27 @@
     <script>
         const apiBaseUrl = 'http://localhost:8080/api';
         let ws;
+        function setLoggedIn(loggedIn) {
+            localStorage.setItem('loggedIn', loggedIn);
+        }
+		function logout() {
+			fetch(`${apiBaseUrl}/user/logout`, {
+				method: 'POST',
+				credentials: 'include' // Include cookies with the request
+			})
+			.then(response => {
+				if (response.ok) {
+					setLoggedIn(false);
+					window.location.href = '/'; // Redirect to the home page
+				} else {
+					alert('Logout failed');
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				alert('Logout failed: ' + error);
+			});
+		}
 
         fetch(`${apiBaseUrl}/rtsp/`, {
             method: 'POST',
