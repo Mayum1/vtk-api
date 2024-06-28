@@ -83,6 +83,21 @@
 				alert('Logout failed: ' + error);
 			});
 		}
+
+		fetch(`${apiBaseUrl}/user/status`, {
+            method: 'GET',
+            credentials: 'include'
+        })
+        .then(response => {
+            if (!response.ok) {
+                setLoggedIn(false);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking session status:', error);
+            setLoggedIn(false);
+        });
+
         fetch(`${apiBaseUrl}/csv/`, {
             method: 'POST',
             headers: {

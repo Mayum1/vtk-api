@@ -70,6 +70,10 @@ public class RtspService {
             return ResponseEntity.badRequest().body("Rtsp link with this name already exists");
         }
 
+        if (rtspLinkRepository.findAllByUser(user).contains(rtspLinkRepository.findByUrl(rtspUrl))) {
+            return ResponseEntity.badRequest().body("Rtsp link with this url already exists");
+        }
+
         RtspLink rtspLink = new RtspLink();
 
         if (rtspLinkRepository.findByUrl(rtspUrl) == null) {

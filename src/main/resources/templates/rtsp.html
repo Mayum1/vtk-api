@@ -45,7 +45,7 @@
     </div>
     <div class="mb-2 d-flex align-items-center">
         <button type="submit" onclick="startStream()" class="btn btn-success">Смотреть стрим</button>
-        <button type="submit" id="muteButton" onclick="muteButton()" class="btn btn-secondary ml-2">Пауза</button>
+        <button type="submit" id="stopButton" onclick="stopButton()" class="btn btn-secondary ml-2">Остановить стрим</button>
         <button type="submit" onclick="deleteLink()" class="btn btn-danger ml-2">Удалить поток</button>
     </div>
 
@@ -78,6 +78,20 @@
 			});
 		}
 
+        fetch(`${apiBaseUrl}/user/status`, {
+            method: 'GET',
+            credentials: 'include'
+        })
+        .then(response => {
+            if (!response.ok) {
+                setLoggedIn(false);
+            }
+        })
+        .catch(error => {
+            console.error('Error checking session status:', error);
+            setLoggedIn(false);
+        });
+
         fetch(`${apiBaseUrl}/rtsp/`, {
             method: 'POST',
             headers: {
@@ -97,10 +111,15 @@
             console.error('Error:', error);
         });
         
-        function muteButton() {
-            var streamVideo = document.getElementById('streamVideo');
-            streamVideo.muted = !streamVideo.muted;
-            document.getElementById('muteButton').textContent = streamVideo.muted ? 'Продолжить' : 'Пауза';
+        function stopButton() {
+            if (ws) {
+                ws.close();
+                ws = null;
+                const streamVideo = document.getElementById('streamVideo');
+                const player = videojs(streamVideo);
+                player.pause();
+                player.reset();
+            }
         }
         
         function saveLink() {
@@ -133,6 +152,10 @@
         
         function deleteLink() {
             const rtspName = document.getElementById('rtspSelect').value;
+
+            if (ws && ws.rtspName === rtspName) {
+                stopButton();
+            }
             
             fetch(`${apiBaseUrl}/rtsp/delete`, {
                 method: 'DELETE',

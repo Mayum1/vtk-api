@@ -66,4 +66,14 @@ public class UserController {
     public String getUsername(HttpSession session) {
         return userService.getUsername(session);
     }
+
+    @GetMapping("/status")
+    public ResponseEntity<?> getSessionStatus(HttpServletRequest request) {
+        return userService.getSessionStatus(request);
+    }
+
+    @GetMapping("/isAdmin")
+    public boolean isAdmin(HttpSession session) {
+        return userService.isAdmin(session);
+    }
 }

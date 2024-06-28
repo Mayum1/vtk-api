@@ -9,11 +9,11 @@ import jakarta.annotation.PreDestroy;
 
 @Component
 public class ShutdownHook {
-	@Autowired
+  @Autowired
 	private RtspService rtspService;
 
     @PreDestroy
     public void onShutdown() {
-		rtspService.stopAllStreams();
+      rtspService.stopAllStreams();
     }
 }

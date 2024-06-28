@@ -18,7 +18,7 @@ public class RtspWebSocketHandler extends TextWebSocketHandler {
     private final RtspService rtspService;
     private final RtspLinkRepository rtspLinkRepository;
     private final UserRepository userRepository;
-    private Map<WebSocketSession, String> sessions = new HashMap<>();
+    private Map<WebSocketSession, Long> sessions = new HashMap<>();
 
     public RtspWebSocketHandler(RtspService rtspService, RtspLinkRepository rtspLinkRepository, UserRepository userRepository) {
         this.rtspService = rtspService;
@@ -28,8 +28,8 @@ public class RtspWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        String name = getNameFromSession(session);
-        sessions.put(session, name);
+        Long id = getIdFromSession(session);
+        sessions.put(session, id);
         // Дополнительная логика при установлении соединения
     }
 
@@ -40,9 +40,9 @@ public class RtspWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        String sessionName = sessions.get(session);
+        Long sessionId = sessions.get(session);
         sessions.remove(session);
-        if (!sessions.containsValue(sessionName)) {
+        if (!sessions.containsValue(sessionId)) {
             Long id = getIdFromSession(session);
             rtspService.stopStream(id);
         }

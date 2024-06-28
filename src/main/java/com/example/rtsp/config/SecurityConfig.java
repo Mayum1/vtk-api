@@ -1,5 +1,6 @@
 package com.example.rtsp.config;
 
+import com.example.rtsp.handler.AccessDeniedHandlerImpl;
 import com.example.rtsp.service.UserDetailsServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,10 +23,18 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    private final AccessDeniedHandlerImpl accessDeniedHandler;
+
+    public SecurityConfig(AccessDeniedHandlerImpl accessDeniedHandler) {
+        this.accessDeniedHandler = accessDeniedHandler;
+    }
+
     @Bean
     public UserDetailsService userDetailsService() {
         return new UserDetailsServiceImpl();
     }
+
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
@@ -47,9 +56,9 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/api/user/signup", "/api/user/signin", "/styles/**", "/images/**")
-                        .permitAll()
-                        .requestMatchers("/rtsp/**", "/csv/**", "/api/rtsp/**", "/api/csv/**").authenticated())
+                        .requestMatchers("/", "/api/user/signup", "/api/user/signin", "/api/user/status",
+                            "/styles/**","/images/**", "/js/**").permitAll()
+                        .requestMatchers("/**").authenticated())
                 .formLogin(AbstractAuthenticationFilterConfigurer::permitAll)
                 .logout(logout -> logout
                         .logoutUrl("/api/user/logout")
@@ -57,7 +66,9 @@ public class SecurityConfig {
                         .deleteCookies("JSESSIONID")
                         .logoutSuccessHandler((request, response, authException) -> response.setStatus(200)))
                 .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint((request, response, authException) -> response.sendError(401)))
+                        .accessDeniedHandler(accessDeniedHandler)
+                        .authenticationEntryPoint((request, response, authException) ->
+                            response.sendRedirect("/?error=unauthorized")))
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.ALWAYS)
                         .maximumSessions(1)

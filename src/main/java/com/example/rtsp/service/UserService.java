@@ -3,6 +3,7 @@ package com.example.rtsp.service;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -88,11 +89,26 @@ public class UserService {
         }
     }
 
+    public ResponseEntity<?> getSessionStatus(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute("username") == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Session expired");
+        }
+        return ResponseEntity.ok("Session active");
+    }
+
     public User getUser(String username) {
         return userRepository.findByUsername(username).get();
     }
 
     public String getUsername(HttpSession session) {
         return (String) session.getAttribute("username");
+    }
+
+    public boolean isAdmin(HttpSession session) {
+        String username = (String) session.getAttribute("username");
+        User user = userRepository.findByUsername(username).get();
+        String role = user.getRole();
+        return role.contains("ROLE_ADMIN");
     }
 }

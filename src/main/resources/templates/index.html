@@ -224,6 +224,22 @@
             document.getElementById('registerBtn').style.display = loggedIn ? 'none' : 'block';
         }
 
+        if (isUserLoggedIn()) {
+            fetch(`${apiBaseUrl}/user/status`, {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    setLoggedIn(false);
+                }
+            })
+            .catch(error => {
+                console.error('Error checking session status:', error);
+                setLoggedIn(false);
+            });
+        }
+
         document.getElementById('registerForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const username = document.getElementById('registerUsername').value;
@@ -304,46 +320,6 @@
         if (isUserLoggedIn()) {
             setLoggedIn(true);
         }
-
-        // CSV Page logic
-        fetch(`${apiBaseUrl}/csv/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            credentials: 'include' // Include cookies with the request
-        })
-        .then(response => response.json())
-        .then(data => {
-            data.forEach(csv => {
-                const option = document.createElement('option');
-                option.textContent = csv.name;
-                document.getElementById('csvSelect').appendChild(option);
-            });
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
-
-        // RTSP Page logic
-        fetch(`${apiBaseUrl}/rtsp/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            credentials: 'include' // Include cookies with the request
-        })
-        .then(response => response.json())
-        .then(data => {
-            data.forEach(rtspName => {
-                const option = document.createElement('option');
-                option.textContent = rtspName;
-                document.getElementById('rtspSelect').appendChild(option);
-            });
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
     </script>
 </body>
 </html>
