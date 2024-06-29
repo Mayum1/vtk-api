@@ -12,6 +12,10 @@
     <link rel="icon" th:href="@{/images/camera_indoor.svg}">
 </head>
 <body>
+    <div id="savedAlert" class="alert alert-primary alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 75px; border-radius: 0; font-size: 20px; z-index: 9999;">
+		Поток сохранён
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
     <header class="d-flex flex-wrap align-items-center justify-content-between bg-white custom-header px-15">
         <img class="img-fluid " style="width: 400px; height: auto;" src="./images/logo.png"/>
 
@@ -140,9 +144,14 @@
             .then(data => {
                 document.getElementById('output').innerText += data + '\n';
                 if (data == 'Rtsp link saved') {
+                    console.log("test")
                     const option = document.createElement('option');
                     option.textContent = rtspName;
                     document.getElementById('rtspSelect').appendChild(option);
+                    $('#savedAlert').show();
+					setTimeout(function() {
+						$('#savedAlert').fadeOut('slow');
+					}, 3000);
                 }
             })
             .catch(error => {
