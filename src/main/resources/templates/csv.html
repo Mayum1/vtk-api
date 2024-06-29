@@ -10,13 +10,18 @@
     <title>CSV Tables</title>
 </head>
 <body>
-	<div id="saveAlert" class="alert alert-primary alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 75px; border-radius: 0; font-size: 20px;">
+	<div id="saveAlert" class="alert alert-primary alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 75px; border-radius: 0; font-size: 20px; z-index: 9999;">
 		Таблица сохранена
 		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 	</div>
+	<div id="deleteAlert" class="alert alert-danger alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 75px; border-radius: 0; font-size: 20px; z-index: 9999;">
+		Таблица удалена
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
 	<header class="d-flex flex-wrap align-items-center justify-content-between bg-white custom-header px-15">
-        <img class="img-fluid " style="width: 400px; height: auto;" src="./images/logo.png"/>
-
+        <a href="/" style="cursor:pointer;">
+            <img class="img-fluid " style="width: 400px; height: auto;" src="./images/logo.png"/>
+        </a>
         <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
             <li><a href="#" id="importLink" class="nav-link px-2 link-primary fs-2">Просмотр таблиц</a></li>
             <li><a href="/rtsp" id="viewCamerasLink" class="nav-link px-2 link-primary fs-2">Просмотр камер</a></li>
@@ -316,8 +321,8 @@
 			fetch(`${apiBaseUrl}/csv/delete`, {
 				method: 'DELETE',
 				headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
+					'Content-Type': 'application/x-www-form-urlencoded'
+				},
 				body: new URLSearchParams({
 					csvName: csvName
 				}),
@@ -326,13 +331,17 @@
 			.then(response => response.text())
 			.then(data => {
 				document.getElementById('output').innerText += data + '\n';
-                var selectBox = document.getElementById('csvSelect')
+				var selectBox = document.getElementById('csvSelect')
 				selectBox.remove(selectBox.selectedIndex);
-				showCsv()
+				showCsv();
+				$('#deleteAlert').show();
+				setTimeout(function() {
+					$('#deleteAlert').fadeOut('slow');
+				}, 3000);
 			})
 			.catch(error => {
-                console.error('Error:', error);
-            });
+				console.error('Error:', error);
+			});
 		}
     </script>
 </body>

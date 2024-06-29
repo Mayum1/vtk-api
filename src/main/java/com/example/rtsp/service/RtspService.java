@@ -71,7 +71,7 @@ public class RtspService {
         }
 
         if (rtspLinkRepository.findAllByUser(user).contains(rtspLinkRepository.findByUrl(rtspUrl))) {
-            return ResponseEntity.badRequest().body("Rtsp link with this url already exists");
+            return ResponseEntity.badRequest().body("Rtsp link with this url already exists. Name: " + rtspLinkRepository.findByUrl(rtspUrl).getNames().get(user));
         }
 
         RtspLink rtspLink = new RtspLink();
