@@ -118,7 +118,7 @@ public class RtspService {
         String outputPath = path.resolve("playlist.m3u8").toString();
 
         ProcessBuilder processBuilder = new ProcessBuilder(
-            "C:\\Users\\Maxim\\Downloads\\ffmpeg-2021-12-12-git-996b13fac4-full_build\\bin\\ffmpeg",
+            "ffmpeg",
             "-rtsp_transport", "tcp",
             "-i", rtspUrl,
             "-analyzeduration", "5000000",
