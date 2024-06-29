@@ -39,16 +39,16 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public User signUp(UserRequest registrationRequest) {
+    public ResponseEntity<?> signUp(UserRequest registrationRequest) {
         if (userRepository.findByUsername(registrationRequest.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("User already exists");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("User already exists");
         }
         User user = new User();
         user.setUsername(registrationRequest.getUsername());
         user.setPassword(passwordEncoder.encode(registrationRequest.getPassword()));
         user.setRole("ROLE_USER");
         userRepository.save(user);
-        return user;
+        return ResponseEntity.ok("Registration successful");
     }
 
     public ResponseEntity<?> signIn(UserRequest loginRequest, HttpSession session) {
@@ -75,7 +75,7 @@ public class UserService {
         return ResponseEntity.ok("Logout successful");
     }
 
-    public User updateRole(UserDTO updatedUser) {
+    public ResponseEntity<?> updateRole(UserDTO updatedUser) {
         Optional<User> optionalUser = userRepository.findById(updatedUser.getId());
 
         if (optionalUser.isPresent()) {
@@ -83,9 +83,9 @@ public class UserService {
             existingUser.setRole(updatedUser.getRole());
             userRepository.save(existingUser);
             
-            return existingUser;
+            return ResponseEntity.ok("Role updated");
         } else {
-            throw new IllegalArgumentException("User not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
     }
 

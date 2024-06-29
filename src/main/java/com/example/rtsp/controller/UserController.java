@@ -35,7 +35,7 @@ public class UserController {
     }
 
     @PostMapping("/signup")
-    public User signUp(@RequestBody UserRequest request) {
+    public ResponseEntity<?> signUp(@RequestBody UserRequest request) {
         return userService.signUp(request);
     }
 
@@ -51,7 +51,7 @@ public class UserController {
 
     @PutMapping("/updateRole")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN')")
-    public User updateRole(@RequestBody UserDTO user) {
+    public ResponseEntity<?> updateRole(@RequestBody UserDTO user) {
         return userService.updateRole(user);
     }
 

@@ -16,6 +16,18 @@
 		Поток сохранён
 		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 	</div>
+	<div id="deleteAlert" class="alert alert-danger alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 75px; border-radius: 0; font-size: 20px; z-index: 9999;">
+		Поток удалён
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+    <div id="loadingAlert" class="alert alert-secondary alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 75px; border-radius: 0; font-size: 20px; z-index: 9999;">
+		Стрим загружается...
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+    <div id="errorAlert" class="alert alert-danger alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 75px; border-radius: 0; font-size: 20px; z-index: 9999;">
+		<span id="errorMessage"></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
     <header class="d-flex flex-wrap align-items-center justify-content-between bg-white custom-header px-15">
         <a href="/" style="cursor:pointer;">
             <img class="img-fluid " style="width: 400px; height: auto;" src="./images/logo.png"/>
@@ -61,6 +73,7 @@
     </div>
 </div>
 
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script>
         const apiBaseUrl = 'http://localhost:8080/api';
         let ws;
@@ -129,6 +142,16 @@
                 player.reset();
             }
         }
+
+        function showError(message) {
+            const errorAlert = document.getElementById('errorAlert');
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            $('#errorAlert').show();
+            setTimeout(function() {
+                $('#errorAlert').fadeOut('slow');
+            }, 3000);
+        }
         
         function saveLink() {
             const rtspName = document.getElementById('rtspName').value;
@@ -144,27 +167,38 @@
                     rtspUrl: rtspUrl
                 })
             })
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('output').innerText += data + '\n';
-                if (data == 'Rtsp link saved') {
-                    console.log("test")
-                    const option = document.createElement('option');
-                    option.textContent = rtspName;
-                    document.getElementById('rtspSelect').appendChild(option);
-                    $('#savedAlert').show();
-					setTimeout(function() {
-						$('#savedAlert').fadeOut('slow');
-					}, 3000);
+            .then(response => {
+                if (response.ok) {
+                    response.text().then(data => {
+                        document.getElementById('output').innerText += data + '\n';
+                        if (data == 'Rtsp link saved') {
+                            const option = document.createElement('option');
+                            option.textContent = rtspName;
+                            document.getElementById('rtspSelect').appendChild(option);
+                            $('#savedAlert').show();
+                            setTimeout(function() {
+                                $('#savedAlert').fadeOut('slow');
+                            }, 3000);
+                        }
+                    });
+                } else {
+                    response.text().then(errorData => {
+                        showError(errorData);
+                        return;
+                    })
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                showError(error);
             });
         }
         
         function deleteLink() {
             const rtspName = document.getElementById('rtspSelect').value;
+
+            if (rtspName === '')
+				return;
 
             if (ws && ws.rtspName === rtspName) {
                 stopButton();
@@ -184,6 +218,10 @@
                 document.getElementById('output').innerText += data + '\n';
                 var selectBox = document.getElementById('rtspSelect');
                 selectBox.remove(selectBox.selectedIndex);
+                $('#deleteAlert').show();
+                setTimeout(function() {
+                    $('#deleteAlert').fadeOut('slow');
+                }, 3000);
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -221,6 +259,7 @@
 
                 ws.onopen = () => {
                     console.log('WebSocket connection opened');
+                    $('#loadingAlert').show();
                 };
 
                 ws.onmessage = (event) => {
@@ -230,6 +269,7 @@
 
                 ws.onclose = (event) => {
                     console.log('WebSocket connection closed', event);
+
                 };
 
                 ws.onerror = (error) => {
@@ -274,6 +314,10 @@
                     src: data,
                     type: 'application/x-mpegURL'
                 });
+
+                setTimeout(function() {
+                    $('#loadingAlert').fadeOut('slow');
+                }, 1000);
 
                 player.play();
             })
