@@ -94,11 +94,19 @@
     
 </head>
 <body>
+    <div id="authError" class="alert alert-danger alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 85px; border-radius: 0; font-size: 20px; z-index: 9999;">
+		<span></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+    <div id="authSuccess" class="alert alert-success alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 85px; border-radius: 0; font-size: 20px; z-index: 9999;">
+		<span></span>
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
     <header class="d-flex flex-wrap align-items-center justify-content-between bg-white custom-header px-15">
         <a href="/" style="cursor:pointer;">
             <img class="img-fluid " style="width: 400px; height: auto;" src="./images/logo.png"/>
         </a>
-        <ul class="nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
+        <ul class="header_nav nav col-12 col-md-auto mb-2 justify-content-center mb-md-0">
             <li ><a href="/csv" id="csvPageButton" class="nav-link px-2 link-primary fs-2">Просмотр таблиц</a></li>
             <li ><a href="/rtsp" id="rtspPageButton" class="nav-link px-2 link-primary fs-2">Просмотр камер</a></li>
         </ul>
@@ -142,10 +150,28 @@
             </form>
         </div>
     </div>
-
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script>
         const apiBaseUrl = 'http://localhost:8080/api';
         let ws;
+
+        function checkIsAdmmin() {
+            if (isUserLoggedIn()) {
+                fetch(`${apiBaseUrl}/user/isAdmin`, {
+                        method: 'GET',
+                })
+                .then(response => response.text())
+                .then(data => {
+                    if (data == "true") {
+                        $(".header_nav").append(`<li><a href="/admin" id="rtspPageButton" class="nav-link px-2 link-primary fs-2">Админ-панель</a></li>`)
+                    }
+                })
+            }
+        }
+
+        checkIsAdmmin()
+      
+        
 
         document.getElementById('csvPageButton').addEventListener('click', (e) => {
             if (!isUserLoggedIn()) {
@@ -257,15 +283,27 @@
             .then(response => response.json())
             .then(data => {
                 if (data.errors) {
-                    alert('Registration error: ' + JSON.stringify(data.errors));
+                    $('#authError span').text("Такой пользователь уже существует")
+                    $('#authError').show();
+                    setTimeout(function() {
+                        $('#authError').fadeOut('slow');
+                    }, 3000);
                 } else {
                     document.getElementById('loginModal').style.display = 'none';
                     document.getElementById('registerModal').style.display = 'none';
+                    $('#authSuccess span').text("Успшная регистрация")
+                    $('#authSuccess').show();
+                    setTimeout(function() {
+                        $('#authSuccess').fadeOut('slow');
+                    }, 3000);
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Registration failed: ' + error);
+                $('#authError span').text("Такой пользователь уже существует")
+                $('#authError').show();
+                setTimeout(function() {
+                    $('#authError').fadeOut('slow');
+                }, 3000);
             });
         });
 
@@ -288,15 +326,29 @@
                     setLoggedIn(true);
                     document.getElementById('loginModal').style.display = 'none';
                     document.getElementById('registerModal').style.display = 'none';
+                    $('#authSuccess span').text("Успешная авторизация")
+                    $('#authSuccess').show();
+                    setTimeout(function() {
+                        $('#authSuccess').fadeOut('slow');
+                    }, 3000);
+                    checkIsAdmmin()
                 } else {
-                    response.json().then(data => {
-                        alert('Login error: ' + (data.message || 'Unknown error'));
-                    });
+                    $('#authError span').text("Неверный логин или пароль")
+                    $('#authError').show();
+                    setTimeout(function() {
+                        $('#authError').fadeOut('slow');
+                    }, 3000);
+                    //console.log(response)
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Login failed: ' + error);
+                $('#authError span').text("Неверный логин или пароль")
+                $('#authError').show();
+                setTimeout(function() {
+                    $('#authError').fadeOut('slow');
+                }, 3000);
+                //console.error('Error:', error);
+                //alert('Login failed: ' + error);
             });
         });
 
