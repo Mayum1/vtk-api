@@ -153,9 +153,32 @@
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script>
         const apiBaseUrl = 'http://localhost:8080/api';
-        let ws;
 
-        function checkIsAdmmin() {
+        $(document).ready(function() {
+            const urlParams = new URLSearchParams(window.location.search);
+
+            if (urlParams.get('error') === 'unauthorized') {
+                $('#authError span').text("Войдите в аккаунт");
+                $('#authError').show();
+                setTimeout(function() {
+                    $('#authError').fadeOut('slow', function() {
+                        window.history.pushState({}, document.title, "/");
+                    });
+                }, 3000);
+            }
+
+            if (urlParams.get('error') === 'forbidden') {
+                $('#authError span').text("Нет доступа");
+                $('#authError').show();
+                setTimeout(function() {
+                    $('#authError').fadeOut('slow', function() {
+                        window.history.pushState({}, document.title, "/");
+                    });
+                }, 3000);
+            }
+        });
+
+        function checkIsAdmin() {
             if (isUserLoggedIn()) {
                 fetch(`${apiBaseUrl}/user/isAdmin`, {
                         method: 'GET',
@@ -169,28 +192,7 @@
             }
         }
 
-        checkIsAdmmin()
-      
-        
-
-        document.getElementById('csvPageButton').addEventListener('click', (e) => {
-            if (!isUserLoggedIn()) {
-                e.preventDefault();
-                alert('Для ИМПОРТИРОВАНИЯ ТАБЛИЦ, необходимо зарегистрироваться или войти в систему.');
-            } else {
-                showPage('csvPage');
-            }
-        });
-
-        document.getElementById('rtspPageButton').addEventListener('click', (e) => {
-            if (!isUserLoggedIn()) {
-                e.preventDefault();
-                alert('Для ПРОСМОТРА ПОТОКОВ, необходимо зарегистрироваться или войти в систему.');
-            }
-            else {
-                showPage('rtspPage');
-            }
-        });
+        checkIsAdmin()
 
         document.addEventListener("DOMContentLoaded", function() {
             // Скрыть оба модальных окна при загрузке страницы
@@ -283,7 +285,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.errors) {
-                    $('#authError span').text("Такой пользователь уже существует")
+                    $('#authError span').text("Пользователь с таким именем уже существует")
                     $('#authError').show();
                     setTimeout(function() {
                         $('#authError').fadeOut('slow');
