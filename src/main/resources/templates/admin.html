@@ -3,11 +3,22 @@
 <head>
     <title>Административная панель</title>
     <!-- Подключение Bootstrap CSS -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <link rel="stylesheet" th:href="@{/styles/bootstrap.min.css}" />
+	<link rel="stylesheet" th:href="@{/styles/settings.css}" />
+	<link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/jquery.dataTables.min.css">
 </head>
+<style>
+</style>
 <body>
+    <div id="alert-container" style="position: fixed; bottom: 0; right: 0; width: 350px; z-index: 9999; display: flex; flex-direction: column-reverse; justify-content: end">
+        
+    </div>
+    
     <div class="container">
-        <h1 class="mt-5 mb-5">Административная панель</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center">
+            <h1 class="mt-5 mb-5">Административная панель</h1>
+            <button type="button" class="btn btn-secondary" onclick="window.location.href = '/'">Вернуться на главную</button>
+        </div>
         <form>
             <div class="form-group">
                 <label for="userSelect">Выберите пользователя:</label>
@@ -15,7 +26,7 @@
                     <!-- Здесь будут добавлены элементы option -->
                 </select>
             </div>
-            <div class="form-group form-check">
+            <div class="form-group form-check mt-2">
                 <input type="checkbox" class="form-check-input" id="adminCheck">
                 <label class="form-check-label" for="adminCheck">Сделать администратором</label>
             </div>
@@ -23,7 +34,7 @@
                 <input type="checkbox" class="form-check-input" id="tableCheck">
                 <label class="form-check-label" for="tableCheck">Доступ к таблицам</label>
             </div>
-            <div class="form-group form-check">
+            <div class="form-group form-check mb-2">
                 <input type="checkbox" class="form-check-input" id="camCheck">
                 <label class="form-check-label" for="camCheck">Доступ к веб-камерам</label>
             </div>
@@ -32,7 +43,7 @@
     </div>
 
     <!-- Подключение jQuery и Bootstrap JS -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
 
     <!-- Ваш массив пользователей и функция для добавления элементов option -->
@@ -89,7 +100,7 @@
                     })
                     .then(response => response.text())
                     .then(data => {
-                        document.getElementById('output').innerText += data + '\n';
+                        //document.getElementById('output').innerText += data + '\n';
                     })
                     .catch(error => {
                         console.error('Error:', error);
@@ -107,6 +118,7 @@
 
                 if (selectedUser.role.includes('ROLE_CSV')) {
                     tableCheck.checked = true;
+                    
                 } else {
                     tableCheck.checked = false;
                 }
@@ -120,6 +132,9 @@
                 } else {
                     adminCheck.checked = false;
                 }
+
+                
+               
             }
 
             function updateRoles(selectedUser) {
@@ -159,6 +174,41 @@
 
                 return roles.join(', ');
             }
+        // Добавляем слушатели событий на наши checkbox
+            document.getElementById('adminCheck').addEventListener('change', showAlert);
+            document.getElementById('tableCheck').addEventListener('change', showAlert);
+            document.getElementById('camCheck').addEventListener('change', showAlert);
+
+            // Функция для показа alert
+            // Функция для показа alert
+        function showAlert(e) {
+            if (!e.target.checked) {
+                return;
+            }
+            var alertId = '';
+            var alertMessage = '';
+
+            if (e.target.id === 'adminCheck') {
+                alertMessage = 'Роль пользователя изменена';
+            } else if (e.target.id === 'tableCheck') {
+                alertMessage = 'Возможность просмотра таблицы добавлена';
+            }
+            else {
+                alertMessage = 'Возможность просмотра камеры добавлена';
+            }
+            pop_up_html =  `<div id="alert_${e.target.id}" class="alert alert-success alert-dismissible fade show" role="alert" style="display: none;  width: 350px; height: 85px; border-radius: 0; font-size: 20px; z-index: 9999;">
+            <span>${alertMessage}</span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	    </div>`
+
+            $("#alert-container").append(pop_up_html);
+                
+            $(`#alert_${e.target.id}`).show();
+			setTimeout(function() {
+				$(`#alert_${e.target.id}`).fadeOut('slow');
+                $(`#alert_${e.target.id}`).remove()
+			}, 3000);
+        }
         </script>
 </body>
 </html>
