@@ -47,8 +47,10 @@
             </select>
         </div>
         <button type="button" class="btn btn-danger mt-2 mb-3" onclick="deleteCsv()">Удалить таблицу</button>
-
-		<table id="csvTable" class="display">
+		<div style="min-height: 493px; width: 100%; border: 1px solid #d5d5d5; padding: 10px; margin-bottom: 50px;">
+			<table id="csvTable" class="display" >
+		</div>
+		
             
         </table>
 
@@ -205,6 +207,15 @@
 					$('#csvTable_wrapper').css("display", "block")
 				}
 
+				 if ($.fn.DataTable.isDataTable('#csvTable')) {
+					$('#csvTable').DataTable().destroy();
+					$('#csvTable').empty(); // очистка таблицы
+				}
+
+				const table = document.createElement('table');
+				table.id = 'csvTable';
+				$('.container').append(table);
+
 				fetch(`/csv/${username}/${csvName}`).then(response => {
 					if (!response.ok) {
 						throw new Error("HTTP error " + response.status);
@@ -251,7 +262,6 @@
 							$.fn.dataTable.moment('DD.MM.YYYY HH:mm:ss');
 
 							$('#csvTable').DataTable({
-								destroy: true,
 								autoWidth: false,
 								language: {
 									"processing": "Подождите...",
@@ -294,11 +304,9 @@
 										});
 									});
 								}
-							});
+							})
 
-							$('#csvTable').DataTable().columns().header().to$().each(function(index) {
-		$(this).text(headers[index]);
-	});
+							
 						};
 						reader.readAsText(file, 'CP1251');
 					}
