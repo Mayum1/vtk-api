@@ -21,7 +21,7 @@
 		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 	</div>
     <div id="loadingAlert" class="alert alert-secondary alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 75px; border-radius: 0; font-size: 20px; z-index: 9999;">
-		Стрим загружается...
+		<span id="loadingMessage"></span>
 		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 	</div>
     <div id="errorAlert" class="alert alert-danger alert-dismissible fade show" role="alert" style="display: none; position: fixed; bottom: 0; right: 0; width: 350px; height: 75px; border-radius: 0; font-size: 20px; z-index: 9999;">
@@ -69,7 +69,7 @@
 
     <pre id="output" class="d-none"></pre>
     <div style="display: flex; justify-content: center;">
-        <video id="streamVideo" class="video-js vjs-default-skin mt-4 mb-5" controls autoplay style="width: 800px; height: 450px;"></video>
+        <video id="streamVideo" class="video-js vjs-default-skin mt-4 mb-5" controls autoplay preload="auto" style="width: 800px; height: 450px;"></video>
     </div>
 </div>
 
@@ -152,10 +152,19 @@
                 $('#errorAlert').fadeOut('slow');
             }, 3000);
         }
+
+        function showLoading(message) {
+            const loadingAlert = document.getElementById('loadingAlert');
+            const loadingMessage = document.getElementById('loadingMessage');
+            loadingMessage.textContent = message;
+            $('#loadingAlert').show();
+        }
         
         function saveLink() {
             const rtspName = document.getElementById('rtspName').value;
             const rtspUrl = document.getElementById('rtspUrl').value;
+
+            showLoading("Ссылка проверяется...")
             
             fetch(`${apiBaseUrl}/rtsp/save`, {
                 method: 'POST',
@@ -175,6 +184,7 @@
                             const option = document.createElement('option');
                             option.textContent = rtspName;
                             document.getElementById('rtspSelect').appendChild(option);
+                            $('#loadingAlert').hide();
                             $('#savedAlert').show();
                             setTimeout(function() {
                                 $('#savedAlert').fadeOut('slow');
@@ -183,6 +193,7 @@
                     });
                 } else {
                     response.text().then(errorData => {
+                        $('#loadingAlert').hide();
                         showError(errorData);
                         return;
                     })
@@ -259,7 +270,7 @@
 
                 ws.onopen = () => {
                     console.log('WebSocket connection opened');
-                    $('#loadingAlert').show();
+                    showLoading("Стрим загружается...")
                 };
 
                 ws.onmessage = (event) => {
@@ -306,6 +317,7 @@
                             useDevicePixelRatio: true,
                             overrideNative: !videojs.browser.IS_SAFARI,
                             handleManifestRedirects: true,
+                            lowLatencyMode: true
                         }
                     }
                 });

@@ -13,7 +13,9 @@ import com.example.rtsp.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
 import jakarta.transaction.Transactional;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Transactional
@@ -74,6 +77,10 @@ public class RtspService {
             return ResponseEntity.badRequest().body("Rtsp link with this url already exists. Name: " + rtspLinkRepository.findByUrl(rtspUrl).getNames().get(user));
         }
 
+        if (!isRtspStreamActive(rtspUrl)) {
+            return ResponseEntity.badRequest().body("Rtsp stream is not active or url is not valid");
+        }
+
         RtspLink rtspLink = new RtspLink();
 
         if (rtspLinkRepository.findByUrl(rtspUrl) == null) {
@@ -87,6 +94,41 @@ public class RtspService {
         rtspLinkRepository.save(rtspLink);
 
         return ResponseEntity.ok().body("Rtsp link saved");
+    }
+
+    private boolean isRtspStreamActive(String rtspUrl) {
+         ProcessBuilder processBuilder = new ProcessBuilder(
+            "ffmpeg",
+            "-rtsp_transport", "tcp",
+            "-i", rtspUrl,
+            "-t", "5",
+            "-max_muxing_queue_size", "1024",
+            "-f", "null", "-"
+        );
+
+        processBuilder.redirectErrorStream(true); // Redirect error stream to output stream
+
+        try {
+            Process process = processBuilder.start();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            StringBuilder output = new StringBuilder();
+            String line;
+
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append("\n");
+            }
+
+            boolean finished = process.waitFor(10, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroy();
+                return false;
+            }
+
+            String ffmpegOutput = output.toString();
+            return !ffmpegOutput.contains("Error opening input") && process.exitValue() == 0;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public ResponseEntity<?> deleteRtspLink(String rtspName, HttpSession session) {
@@ -178,6 +220,13 @@ public class RtspService {
         Process process = ffmpegProcesses.get(id);
         if (process != null) {
             process.destroy();
+            try {
+                process.waitFor();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                e.printStackTrace();
+            }
+
             ffmpegProcesses.remove(id);
 
             String outputPath = staticPath + "rtsp/" + id + "/playlist.m3u8";
